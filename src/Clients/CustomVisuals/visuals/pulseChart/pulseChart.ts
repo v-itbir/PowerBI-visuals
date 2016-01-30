@@ -701,7 +701,7 @@ module powerbi.visuals.samples {
             var isScalar: boolean =  CartesianChart.getIsScalar(dataView.metadata ? dataView.metadata.objects : null, axisType, categoryType);
             
             this.setSize(options.viewport); 
-            var data: PulseChartData = this.data = PulseChart.converter(dataView, isScalar);
+            var data: PulseChartData = this.data = this.converter(dataView, isScalar);
             //console.log('data:', data);
             if (!data) {
                 return;
@@ -982,7 +982,7 @@ module powerbi.visuals.samples {
             selection
                 .classed(node.class, true)    
                 .attr('fill', "none")///(d: PulseChartSeries) => d.color)
-                .attr('stroke', "#3779B7")//(d: PulseChartSeries) => d.color)
+                .attr('stroke', (d: PulseChartSeries) => d.color)
                 .attr('d', d => line(d.data))
                 .attr('stroke-width', "2px");
 
