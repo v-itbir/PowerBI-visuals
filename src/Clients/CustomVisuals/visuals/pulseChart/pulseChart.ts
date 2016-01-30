@@ -83,12 +83,17 @@ module powerbi.visuals.samples {
         position?: LegendPosition;
     }
 
+    export interface PulseChartPopup {
+        showAll: boolean
+    }
+
     export interface PulseChartSettings {
         displayName?: string;
         fillColor?: string;
         precision: number;
         legend?: PulseChartLegend;
         colors?: IColorPalette;
+        popup?: PulseChartPopup
     }
 
     export interface PulseChartData /*extends LineChartData*/ {
@@ -206,6 +211,15 @@ module powerbi.visuals.samples {
                         },
 
                     }
+                },
+                popup: {
+                    displayName: 'Popup',
+                    properties: {
+                        showAll: {
+                            displayName: "Show All",
+                            type: { bool: true }
+                        },
+                    }
                 }
             }
         };
@@ -233,6 +247,19 @@ module powerbi.visuals.samples {
                     objectName: "labels",
                     propertyName: "labelPrecision"
                 }
+            },
+            popup: {
+                showAll: <DataViewObjectPropertyIdentifier>{
+                    objectName: "popup",
+                    propertyName: "showAll"
+                }
+            }
+        };
+
+        private static DefaultSettings: PulseChartSettings = {
+            precision: 0,
+            popup: {
+                showAll: true
             }
         };
 
@@ -1029,8 +1056,20 @@ module powerbi.visuals.samples {
 
                 settings.legend = PulseChart.getLegendSettings(objects);
                 settings.colors = PulseChart.getDataColorsSettings(objects);*/
+
+                settings.popup = PulseChart.getPopupSettings(objects);
             }
             return settings;
+        }
+
+        private static getPopupSettings(objects: DataViewObjects): PulseChartPopup {
+            var showAll = DataViewObjects.getValue<boolean>(
+                objects,
+                PulseChart.properties["popup"]["showAll"],
+                PulseChart.DefaultSettings.popup.showAll);
+            return {
+                showAll
+            };
         }
 /*
         private getRecomendedFontProperties(text1: string, text2: string, parentViewport: IViewport): TextProperties {
@@ -1207,8 +1246,44 @@ module powerbi.visuals.samples {
           //  this.axisY.selectAll('*').remove();
             //this.axisX.selectAll('*').remove();
         }
+
+
+        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstance[] {
+            var instances: VisualObjectInstance[] = [],
+                settings: PulseChartSettings;
+
+            settings = this.data.settings;
+
+            switch (options.objectName) {                
+                case "popup": {
+                    this.readPopupInstance(instances);
+                    break;
+                }
+            }
+
+            return instances;
+        }
+
+        private readPopupInstance(instances: VisualObjectInstance[]): void {
+            var popupSettings: PulseChartPopup = this.data.settings.popup;
+
+            if (!popupSettings) {
+                popupSettings = PulseChart.DefaultSettings.popup;
+            }
+
+            var popup: VisualObjectInstance = {
+                objectName: "popup",
+                displayName: "popup",
+                selector: null,
+                properties: {
+                    showAll: popupSettings.showAll
+                }
+            };
+
+            instances.push(popup);
+        }
     }
-    
+
     export class PulseChartBehavior implements IInteractiveBehavior {
         private behaviors: IInteractiveBehavior[];
 
@@ -1233,6 +1308,4 @@ module powerbi.visuals.samples {
             }
         }
     }
-    
-
 }
