@@ -143,7 +143,7 @@ module powerbi.visuals.samples {
                 {
                     displayName: PulseChart.RoleNames.Value,
                     name: PulseChart.RoleNames.Value,
-                    kind: powerbi.VisualDataRoleKind.GroupingOrMeasure,
+                    kind: powerbi.VisualDataRoleKind.Measure,
                 },
                 {
                     displayName: PulseChart.RoleNames.EventTitle,
