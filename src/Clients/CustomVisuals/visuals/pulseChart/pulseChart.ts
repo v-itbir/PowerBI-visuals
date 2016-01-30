@@ -42,20 +42,6 @@ module powerbi.visuals.samples {
         layerOptions?: any[];
         clearCatcher: D3.Selection;
     }
-        
-    export var PulseChartProps = {
-        dataPoint: {
-            defaultColor: <DataViewObjectPropertyIdentifier>{
-                objectName: 'dataPoint',
-                propertyName: 'defaultColor'
-            },
-            fill: <DataViewObjectPropertyIdentifier>{
-                objectName: 'dataPoint',
-                propertyName: 'fill'
-            },
-        },
-    };
-    
     
     export interface TooltipSettings {
             marginTop: number;
@@ -86,13 +72,20 @@ module powerbi.visuals.samples {
         showAll: boolean
     }
 
+    export interface PulseChartDataPointSetting {
+        fill: string;
+        width: number;
+        showAll: boolean
+    }
+
     export interface PulseChartSettings {
         displayName?: string;
         fillColor?: string;
         precision: number;
         legend?: PulseChartLegend;
         colors?: IColorPalette;
-        popup?: PulseChartPopup
+        dataPoint?: PulseChartDataPointSetting;
+        popup?: PulseChartPopup;
     }
 
     export interface PulseChartData /*extends LineChartData*/ {
@@ -198,11 +191,15 @@ module powerbi.visuals.samples {
                             }
                         },
                         width: {
-                            displayName: '',
+                            displayName: 'Width',
                             type: { 
                                 numeric: true
                             }
-                        }
+                        },
+                        showAll: {
+                            displayName: "Show All",
+                            type: { bool: true }
+                        },
                     }
                 },
                 general: {
@@ -241,9 +238,9 @@ module powerbi.visuals.samples {
                 titleText: <DataViewObjectPropertyIdentifier>{ objectName: 'legend', propertyName: 'titleText' },
             },
             dataPoint: {
-                defaultColor: <DataViewObjectPropertyIdentifier>{ objectName: 'dataPoint', propertyName: 'defaultColor' },
                 fill: <DataViewObjectPropertyIdentifier>{ objectName: 'dataPoint', propertyName: 'fill' },
-                showAllDataPoints: <DataViewObjectPropertyIdentifier>{ objectName: 'dataPoint', propertyName: 'showAllDataPoints' },
+                width: <DataViewObjectPropertyIdentifier>{ objectName: 'dataPoint', propertyName: 'width' },
+                showAll: <DataViewObjectPropertyIdentifier>{ objectName: 'dataPoint', propertyName: 'showAll' },
             },
             labels: {
                 labelPrecision: <DataViewObjectPropertyIdentifier>{
@@ -262,6 +259,11 @@ module powerbi.visuals.samples {
         private static DefaultSettings: PulseChartSettings = {
             precision: 0,
             popup: {
+                showAll: true
+            },
+            dataPoint: {
+                fill: "#3779B7",
+                width: 2,
                 showAll: true
             }
         };
@@ -284,7 +286,8 @@ module powerbi.visuals.samples {
         private selectionManager: SelectionManager;
         public animator: IGenericAnimator;
         private behavior: IInteractiveBehavior;
-        
+        private colors: IDataColorPalette;
+
         private viewport: IViewport;
         private margin: IMargin;
         
@@ -349,7 +352,7 @@ module powerbi.visuals.samples {
           return -1;
         }
         
-        public static converter(dataView: DataView,
+        public converter(dataView: DataView,
                                 isScalar: boolean,
                                 interactivityService?: IInteractivityService): PulseChartData {
 
@@ -438,7 +441,7 @@ module powerbi.visuals.samples {
                 //dataLabelUtils.updateLabelSettingsFromLabelsObject(labelsObj, defaultLabelSettings);
             }
 
-            var settings: PulseChartSettings = PulseChart.parseSettings(dataView);
+            var settings: PulseChartSettings = this.parseSettings(dataView);
 
             if (!settings) {
                 console.error("no settings found");
@@ -479,7 +482,7 @@ module powerbi.visuals.samples {
                     SelectionId.createWithIdAndMeasure(groupedIdentity.identity, column.source.queryName) :
                     SelectionId.createWithMeasure(column.source.queryName);
                 var key = identity.getKey();
-                var color = "black";//PulseChartChart.getColor(colorHelper, hasDynamicSeries, values, grouped, seriesIndex, groupedIdentity);
+                var color = settings.dataPoint.fill;//PulseChartChart.getColor(colorHelper, hasDynamicSeries, values, grouped, seriesIndex, groupedIdentity);
                 var seriesLabelSettings: LineChartDataLabelsSettings;
 
                 if (!hasDynamicSeries) {
@@ -667,6 +670,12 @@ module powerbi.visuals.samples {
             */
             var xAxis: D3.Selection = this.xAxis = svg.append('g').attr('class', 'x axis');
             var yAxis: D3.Selection = this.yAxis = svg.append('g').attr('class', 'y axis');
+
+            var style: IVisualStyle = options.style;
+
+            this.colors = style && style.colorPalette
+                ? style.colorPalette.dataColors
+                : new DataColorPalette();
         }
 
         public update(options: VisualUpdateOptions): void {
@@ -930,7 +939,7 @@ module powerbi.visuals.samples {
             lineSelection
                 .classed(PulseChart.Line.class, true)    
                 .attr('fill', "none")///(d: PulseChartSeries) => d.color)
-                .attr('stroke', "#3779B7")//(d: PulseChartSeries) => d.color)
+                .attr('stroke', (d: PulseChartSeries) => d.color)
                 .attr('d', d => line(d.data))
                 .attr('stroke-width', "2px");
                 /*.style('fill-opacity', PulseChart.DimmedFillOpacity)
@@ -1115,7 +1124,7 @@ module powerbi.visuals.samples {
             return dataView.metadata.objects;
         }
 
-        private static parseSettings(dataView: DataView): PulseChartSettings {
+        private parseSettings(dataView: DataView): PulseChartSettings {
             var settings: PulseChartSettings = <PulseChartSettings>{},
                 objects: DataViewObjects;
 
@@ -1131,6 +1140,7 @@ module powerbi.visuals.samples {
                 settings.colors = PulseChart.getDataColorsSettings(objects);*/
 
                 settings.popup = PulseChart.getPopupSettings(objects);
+                settings.dataPoint = this.getDataPointSettings(objects);
             }
             return settings;
         }
@@ -1142,6 +1152,31 @@ module powerbi.visuals.samples {
                 PulseChart.DefaultSettings.popup.showAll);
             return {
                 showAll
+            };
+        }
+
+        private getDataPointSettings(objects: DataViewObjects): PulseChartDataPointSetting {
+            var showAll = DataViewObjects.getValue<boolean>(
+                objects,
+                PulseChart.properties["dataPoint"]["showAll"],
+                PulseChart.DefaultSettings.dataPoint.showAll);
+
+            var width = DataViewObjects.getValue<number>(
+                objects,
+                PulseChart.properties["dataPoint"]["width"],
+                PulseChart.DefaultSettings.dataPoint.width);
+
+            var colorHelper = new ColorHelper(
+                this.colors,
+                PulseChart.properties["dataPoint"]["fill"],
+                PulseChart.DefaultSettings.dataPoint.fill);
+
+            var fill = colorHelper.getColorForMeasure(objects, "");
+
+            return {
+                showAll,
+                width,
+                fill
             };
         }
 /*
@@ -1332,6 +1367,10 @@ module powerbi.visuals.samples {
                     this.readPopupInstance(instances);
                     break;
                 }
+                case "dataPoint": {
+                    this.readDataPointInstance(instances);
+                    break;
+                }
             }
 
             return instances;
@@ -1354,6 +1393,27 @@ module powerbi.visuals.samples {
             };
 
             instances.push(popup);
+        }
+
+        private readDataPointInstance(instances: VisualObjectInstance[]): void {
+            var dataPointSettings: PulseChartDataPointSetting = this.data.settings.dataPoint;
+
+            if (!dataPointSettings) {
+                dataPointSettings = PulseChart.DefaultSettings.dataPoint;
+            }
+
+            var dataPoint: VisualObjectInstance = {
+                objectName: "dataPoint",
+                displayName: "dataPoint",
+                selector: null,
+                properties: {
+                    fill: dataPointSettings.fill,
+                    width: dataPointSettings.width,
+                    showAll: dataPointSettings.showAll
+                }
+            };
+
+            instances.push(dataPoint);
         }
     }
     
