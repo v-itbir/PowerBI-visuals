@@ -730,7 +730,7 @@ module powerbi.visuals.samples {
 
             //console.log('createOrdinalDomain', result);
             //return data[0].data.map(d => d.categoryIndex);
-            return _.flatten(result);
+            return <number[]>_.flatten(result);
         }
 
         private static createDomain(data: PulseChartSeries[], axisType: ValueType, isScalar: boolean, forcedScalarDomain: any[]): number[]{
