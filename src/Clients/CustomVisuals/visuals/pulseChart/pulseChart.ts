@@ -78,6 +78,12 @@ module powerbi.visuals.samples {
         showAll: boolean;
     }
 
+    export interface PulseChartPlaybackSetting {
+        pauseDuration: number;
+        autoplay: boolean;
+        autoplayPauseDuration: number;
+    }
+
     export interface PulseChartXAxisSettings {
         step: number;
     }
@@ -90,7 +96,8 @@ module powerbi.visuals.samples {
         colors?: IColorPalette;
         dataPoint?: PulseChartDataPointSetting;
         popup?: PulseChartPopup;
-        xAxis: PulseChartXAxisSettings
+        xAxis: PulseChartXAxisSettings;
+        playback: PulseChartPlaybackSetting;
     }
 
     export interface PulseChartData /*extends LineChartData*/ {
@@ -255,7 +262,24 @@ module powerbi.visuals.samples {
                             type: { numeric: true }
                         }
                     }
-                }
+                },
+                playback: {
+                    displayName: 'Playback',
+                    properties: {
+                        autoplay: {
+                            displayName: "Autoplay",
+                            type: { bool: true }
+                        },
+                        pauseDuration: {
+                            displayName: "Pause Duration",
+                            type: { numeric: true }
+                        },                        
+                        autoplayPauseDuration: {
+                            displayName: "Autoplay Pause Duration",
+                            type: { numeric: true }
+                        },
+                    }
+                },
             }
         }; 
 
@@ -294,7 +318,21 @@ module powerbi.visuals.samples {
                     objectName: "xAxis",
                     propertyName: "step"
                 }
-            }
+            },
+            playback: {
+                autoplay: { 
+                    objectName: "playback",
+                    propertyName: "autoplay"
+                },
+                pauseDuration: {
+                    objectName: "playback",
+                    propertyName: "pauseDuration"
+                },
+                autoplayPauseDuration: {
+                    objectName: "playback",
+                    propertyName: "autoplayPauseDuration"
+                },
+            },
         };
 
         private static DefaultSettings: PulseChartSettings = {
@@ -309,6 +347,11 @@ module powerbi.visuals.samples {
             },
             xAxis: {
                 step: 30
+            },
+            playback: {
+                autoplay: true,
+                pauseDuration: 10,
+                autoplayPauseDuration: 0
             }
         };
 
@@ -1079,7 +1122,7 @@ module powerbi.visuals.samples {
                 .attr('fill', "none")///(d: PulseChartSeries) => d.color)
                 .attr('stroke', (d: PulseChartSeries) => d.color)
                 .attr('d', d => line(d.data))
-                .attr('stroke-width', "2px");
+                .attr('stroke-width', this.data.settings.dataPoint.width);
 
              selection.exit().remove();
         }
@@ -1242,6 +1285,7 @@ module powerbi.visuals.samples {
             settings.popup = PulseChart.getPopupSettings(objects);
             settings.xAxis = PulseChart.getAxisXSettings(objects);
             settings.dataPoint = this.getDataPointSettings(objects);
+            settings.playback = PulseChart.getPlaybackSettings(objects);
             
             return settings;
         }
@@ -1290,6 +1334,27 @@ module powerbi.visuals.samples {
                 PulseChart.DefaultSettings.xAxis.step);
 
             return xAxisSettings;
+        }
+
+        private static getPlaybackSettings(objects: DataViewObjects): PulseChartPlaybackSetting {
+            var playbackSettings: PulseChartPlaybackSetting = <PulseChartPlaybackSetting> {};
+
+            playbackSettings.autoplay = DataViewObjects.getValue<boolean>(
+                objects,
+                PulseChart.Properties["playback"]["autoplay"],
+                PulseChart.DefaultSettings.playback.autoplay);
+
+            playbackSettings.pauseDuration = DataViewObjects.getValue<number>(
+                objects,
+                PulseChart.Properties["playback"]["pauseDuration"],
+                PulseChart.DefaultSettings.playback.pauseDuration);
+
+            playbackSettings.autoplayPauseDuration = DataViewObjects.getValue<number>(
+                objects,
+                PulseChart.Properties["playback"]["autoplayPauseDuration"],
+                PulseChart.DefaultSettings.playback.autoplayPauseDuration);
+
+            return playbackSettings;
         }
 /*
         private getRecomendedFontProperties(text1: string, text2: string, parentViewport: IViewport): TextProperties {
@@ -1487,6 +1552,10 @@ module powerbi.visuals.samples {
                     this.readDataPointInstance(enumeration);
                     break;
                 }
+                case "playback": {
+                    this.readPlaybackInstance(enumeration);
+                    break;
+                }
             }
 
             return enumeration.complete();
@@ -1545,8 +1614,24 @@ module powerbi.visuals.samples {
 
             enumeration.pushInstance(dataPoint);
         }
+
+        private readPlaybackInstance(enumeration: ObjectEnumerationBuilder): void {
+            var playbackSettings: PulseChartPlaybackSetting = 
+                this.data.settings.playback || PulseChart.DefaultSettings.playback;
+
+            enumeration.pushInstance({
+                objectName: "playback",
+                displayName: "playback",
+                selector: null,
+                properties: {
+                    autoplay: playbackSettings.autoplay,                    
+                    pauseDuration: playbackSettings.pauseDuration,
+                    autoplayPauseDuration: playbackSettings.autoplayPauseDuration,
+                }
+            });
+        }
     }
-    
+
     export class PulseChartBehavior implements IInteractiveBehavior {
         private behaviors: IInteractiveBehavior[];
 
@@ -1571,6 +1656,4 @@ module powerbi.visuals.samples {
             }
         }
     }
-    
-
 }
