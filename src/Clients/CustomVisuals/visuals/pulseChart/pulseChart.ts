@@ -556,8 +556,8 @@ module powerbi.visuals.samples {
                     SelectionId.createWithIdAndMeasure(groupedIdentity.identity, column.source.queryName) :
                     SelectionId.createWithMeasure(column.source.queryName);
                 var key = identity.getKey();
-                var color = settings.dataPoint.fill;
-                var width: number = settings.dataPoint.width;
+                var color = settings.series.fill;
+                var width: number = settings.series.width;
                 var seriesLabelSettings: LineChartDataLabelsSettings;
 
                 if (!hasDynamicSeries) {
@@ -1591,19 +1591,18 @@ module powerbi.visuals.samples {
         private readSeriesInstance(enumeration: ObjectEnumerationBuilder): void {
             var seriesSettings: PulseChartSeriesSetting = 
                 this.data.settings.series || PulseChart.DefaultSettings.series;
-            }
-
-            var dataPoint: VisualObjectInstance = {
+      
+            var series: VisualObjectInstance = {
                 objectName: "series",
                 displayName: "series",
                 selector: null,
                 properties: {
-                    fill: dataPointSettings.fill,
-                    width: dataPointSettings.width
+                    fill: seriesSettings.fill,
+                    width: seriesSettings.width
                 }
             };
 
-            enumeration.pushInstance(dataPoint);
+            enumeration.pushInstance(series);
         }
 
         private readPlaybackInstance(enumeration: ObjectEnumerationBuilder): void {
