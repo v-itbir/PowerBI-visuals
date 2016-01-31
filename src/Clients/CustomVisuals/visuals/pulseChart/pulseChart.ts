@@ -75,7 +75,6 @@ module powerbi.visuals.samples {
     export interface PulseChartDataPointSetting {
         fill: string;
         width: number;
-        showAll: boolean;
     }
 
     export interface PulseChartPlaybackSetting {
@@ -229,10 +228,6 @@ module powerbi.visuals.samples {
                                 numeric: true
                             }
                         },
-                        showAll: {
-                            displayName: "Show All",
-                            type: { bool: true }
-                        },
                     }
                 },
                 general: {
@@ -299,7 +294,6 @@ module powerbi.visuals.samples {
             dataPoint: {
                 fill: { objectName: 'dataPoint', propertyName: 'fill' },
                 width: { objectName: 'dataPoint', propertyName: 'width' },
-                showAll: { objectName: 'dataPoint', propertyName: 'showAll' },
             },
             labels: {
                 labelPrecision: {
@@ -343,7 +337,6 @@ module powerbi.visuals.samples {
             dataPoint: {
                 fill: "#3779B7",
                 width: 2,
-                showAll: true
             },
             xAxis: {
                 step: 30
@@ -1301,11 +1294,6 @@ module powerbi.visuals.samples {
         }
 
         private getDataPointSettings(objects: DataViewObjects): PulseChartDataPointSetting {
-            var showAll = DataViewObjects.getValue<boolean>(
-                objects,
-                PulseChart.Properties["dataPoint"]["showAll"],
-                PulseChart.DefaultSettings.dataPoint.showAll);
-
             var width = DataViewObjects.getValue<number>(
                 objects,
                 PulseChart.Properties["dataPoint"]["width"],
@@ -1319,7 +1307,6 @@ module powerbi.visuals.samples {
             var fill = colorHelper.getColorForMeasure(objects, "");
 
             return {
-                showAll,
                 width,
                 fill
             };
@@ -1607,8 +1594,7 @@ module powerbi.visuals.samples {
                 selector: null,
                 properties: {
                     fill: dataPointSettings.fill,
-                    width: dataPointSettings.width,
-                    showAll: dataPointSettings.showAll
+                    width: dataPointSettings.width
                 }
             };
 
