@@ -73,7 +73,7 @@ module powerbi.visuals.samples {
         showAll: boolean
     }
 
-    export interface PulseChartDataPointSetting {
+    export interface PulseChartSeriesSetting {
         fill: string;
         width: number;
     }
@@ -94,8 +94,8 @@ module powerbi.visuals.samples {
         precision: number;
         legend?: PulseChartLegend;
         colors?: IColorPalette;
-        dataPoint?: PulseChartDataPointSetting;
-        popup?: PulseChartPopup;
+        series: PulseChartSeriesSetting;
+        popup: PulseChartPopup;
         xAxis: PulseChartXAxisSettings;
         playback: PulseChartPlaybackSetting;
     }
@@ -209,9 +209,9 @@ module powerbi.visuals.samples {
                 },
             }],
             objects: {
-                dataPoint: {
-                    displayName: data.createDisplayNameGetter('Visual_DataPoint'),
-                    description: data.createDisplayNameGetter('Visual_DataPointDescription'),
+                series: {
+                    displayName: "Series",
+                    description: "Series",
                     properties: {
                         fill: {
                             displayName: data.createDisplayNameGetter('Visual_Fill'),
@@ -292,9 +292,9 @@ module powerbi.visuals.samples {
                 showTitle: { objectName: 'legend', propertyName: 'showTitle' },
                 titleText: { objectName: 'legend', propertyName: 'titleText' },
             },
-            dataPoint: {
-                fill: { objectName: 'dataPoint', propertyName: 'fill' },
-                width: { objectName: 'dataPoint', propertyName: 'width' },
+            series: {
+                fill: { objectName: 'series', propertyName: 'fill' },
+                width: { objectName: 'series', propertyName: 'width' },
             },
             labels: {
                 labelPrecision: {
@@ -335,7 +335,7 @@ module powerbi.visuals.samples {
             popup: {
                 showAll: true
             },
-            dataPoint: {
+            series: {
                 fill: "#3779B7",
                 width: 2,
             },
@@ -1284,7 +1284,7 @@ module powerbi.visuals.samples {
 
             settings.popup = this.getPopupSettings(objects);
             settings.xAxis = this.getAxisXSettings(objects);
-            settings.dataPoint = this.getDataPointSettings(objects);
+            settings.series = this.getSeriesSettings(objects);
             settings.playback = PulseChart.getPlaybackSettings(objects);
             
             return settings;
@@ -1300,16 +1300,16 @@ module powerbi.visuals.samples {
             };
         }
 
-        private getDataPointSettings(objects: DataViewObjects): PulseChartDataPointSetting {
+        private getSeriesSettings(objects: DataViewObjects): PulseChartSeriesSetting {
             var width = DataViewObjects.getValue<number>(
                 objects,
-                PulseChart.Properties["dataPoint"]["width"],
-                PulseChart.DefaultSettings.dataPoint.width);
+                PulseChart.Properties["series"]["width"],
+                PulseChart.DefaultSettings.series.width);
 
             var colorHelper = new ColorHelper(
                 this.colors,
-                PulseChart.Properties["dataPoint"]["fill"],
-                PulseChart.DefaultSettings.dataPoint.fill);
+                PulseChart.Properties["series"]["fill"],
+                PulseChart.DefaultSettings.series.fill);
 
             var fill = colorHelper.getColorForMeasure(objects, "");
 
@@ -1542,8 +1542,8 @@ module powerbi.visuals.samples {
                     this.xAxisInstance(enumeration);
                     break;
                 }
-                case "dataPoint": {
-                    this.readDataPointInstance(enumeration);
+                case "series": {
+                    this.readSeriesInstance(enumeration);
                     break;
                 }
                 case "playback": {
@@ -1588,16 +1588,14 @@ module powerbi.visuals.samples {
             });
         }
 
-        private readDataPointInstance(enumeration: ObjectEnumerationBuilder): void {
-            var dataPointSettings: PulseChartDataPointSetting = this.data.settings.dataPoint;
-
-            if (!dataPointSettings) {
-                dataPointSettings = PulseChart.DefaultSettings.dataPoint;
+        private readSeriesInstance(enumeration: ObjectEnumerationBuilder): void {
+            var seriesSettings: PulseChartSeriesSetting = 
+                this.data.settings.series || PulseChart.DefaultSettings.series;
             }
 
             var dataPoint: VisualObjectInstance = {
-                objectName: "dataPoint",
-                displayName: "dataPoint",
+                objectName: "series",
+                displayName: "series",
                 selector: null,
                 properties: {
                     fill: dataPointSettings.fill,
