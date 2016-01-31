@@ -76,6 +76,7 @@ module powerbi.visuals.samples {
     export interface PulseChartSeriesSetting {
         fill: string;
         width: number;
+        showByDefault: boolean;
     }
 
     export interface PulseChartPlaybackSetting {
@@ -229,6 +230,12 @@ module powerbi.visuals.samples {
                                 numeric: true
                             }
                         },
+                        showByDefault: {
+                            displayName: 'Show by default',
+                            type: { 
+                                bool: true
+                            }
+                        },
                     }
                 },
                 general: {
@@ -295,6 +302,7 @@ module powerbi.visuals.samples {
             series: {
                 fill: { objectName: 'series', propertyName: 'fill' },
                 width: { objectName: 'series', propertyName: 'width' },
+                showByDefault: { objectName: 'series', propertyName: 'showByDefault' },
             },
             labels: {
                 labelPrecision: {
@@ -338,6 +346,7 @@ module powerbi.visuals.samples {
             series: {
                 fill: "#3779B7",
                 width: 2,
+                showByDefault: true
             },
             xAxis: {
                 step: 30
@@ -1313,9 +1322,15 @@ module powerbi.visuals.samples {
 
             var fill = colorHelper.getColorForMeasure(objects, "");
 
+            var showByDefault = DataViewObjects.getValue<boolean>(
+                objects,
+                PulseChart.Properties["series"]["showByDefault"],
+                PulseChart.DefaultSettings.series.showByDefault);
+
             return {
                 width,
-                fill
+                fill,
+                showByDefault
             };
         }
 
@@ -1598,7 +1613,8 @@ module powerbi.visuals.samples {
                 selector: null,
                 properties: {
                     fill: seriesSettings.fill,
-                    width: seriesSettings.width
+                    width: seriesSettings.width,
+                    showByDefault: seriesSettings.showByDefault,
                 }
             };
 
