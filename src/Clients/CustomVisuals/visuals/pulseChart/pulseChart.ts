@@ -363,6 +363,7 @@ module powerbi.visuals.samples {
         private static DefaultBackgroundColor = '#243C18';
         private static DefaultFormatString: string = "%H:mm";
         private static PaddingBetweenText = 15;
+        private static MaxWidthOfLabel: number = 60;
 
         private svg: D3.Selection;
         private chart: D3.Selection;
@@ -908,7 +909,12 @@ module powerbi.visuals.samples {
 
         private createAxisX(dates: Date[], width: number, formatString: string, step: number = 30): D3.Svg.Axis {
             var formatter: IValueFormatter,
-                timeScale: D3.Scale.TimeScale;
+                timeScale: D3.Scale.TimeScale,
+                maxCountOfLabels: number = this.viewport.width / PulseChart.MaxWidthOfLabel,
+                minDate: Date = dates[0] || new Date(),
+                maxDate: Date = dates[dates.length - 1] || new Date(),
+                range: number = maxDate.getTime() - minDate.getTime(),
+                dateValues: Date[] = [];
 
             formatter = valueFormatter.create({
                 format: formatString,
@@ -920,9 +926,19 @@ module powerbi.visuals.samples {
                 .domain([dates[0], dates[dates.length - 1]])
                 .rangeRound([0, this.viewport.width]);
 
+            step *= 60 * 1000;
+
+            if (maxCountOfLabels < range / step) {
+                step = Math.floor(range / maxCountOfLabels);
+            }
+
+            for (var date = minDate.getTime(); date <= maxDate.getTime(); date += step) {
+                dateValues.push(new Date(date));
+            }
+
             return d3.svg.axis()
                 .scale(timeScale)
-                .ticks(d3.time.minute, step)
+                .tickValues(dateValues)
                 .tickFormat((value: Date) => {
                     return formatter.format(value);
                 });
