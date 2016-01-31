@@ -44,9 +44,9 @@ module powerbi.visuals.samples {
     }
     
     export interface TooltipSettings {
-            marginTop: number;
-            width: number;
-            height: number;
+        marginTop: number;
+        width: number;
+        height: number;
     }
 
     export interface PulseChartSeries extends LineChartSeries {
@@ -54,6 +54,7 @@ module powerbi.visuals.samples {
         data: PulseChartDataPoint[];
         color: string;
         identity: SelectionId;
+        width: number;
     }
 
     export interface PulseChartDataPoint extends LineChartDataPoint {
@@ -103,7 +104,7 @@ module powerbi.visuals.samples {
         categoryMetadata: DataViewMetadataColumn;
         hasHighlights?: boolean;
 
-        series: LineChartSeries[];
+        series: PulseChartSeries[];
         isScalar?: boolean;
         dataLabelsSettings: PointDataLabelsSettings;
         axesLabels: ChartAxesLabels;
@@ -554,7 +555,8 @@ module powerbi.visuals.samples {
                     SelectionId.createWithIdAndMeasure(groupedIdentity.identity, column.source.queryName) :
                     SelectionId.createWithMeasure(column.source.queryName);
                 var key = identity.getKey();
-                var color = settings.dataPoint.fill;//PulseChartChart.getColor(colorHelper, hasDynamicSeries, values, grouped, seriesIndex, groupedIdentity);
+                var color = settings.dataPoint.fill;
+                var width: number = settings.dataPoint.width;
                 var seriesLabelSettings: LineChartDataLabelsSettings;
 
                 if (!hasDynamicSeries) {
@@ -588,6 +590,7 @@ module powerbi.visuals.samples {
                             identity: identity,
                             selected: false,
                             labelSettings: seriesLabelSettings,
+                            width: width
                         });
                         seriesCategoryIndex = 0;
                         dataPoints = [];                        
@@ -679,6 +682,7 @@ module powerbi.visuals.samples {
                         identity: identity,
                         selected: false,
                         labelSettings: seriesLabelSettings,
+                        width: width
                     });
                 }
            // }
@@ -1111,11 +1115,13 @@ module powerbi.visuals.samples {
                 .enter()
                 .append('path');
             selection
-                .classed(node.class, true)    
-                .attr('fill', "none")///(d: PulseChartSeries) => d.color)
-                .attr('stroke', (d: PulseChartSeries) => d.color)
-                .attr('d', d => line(d.data))
-                .attr('stroke-width', this.data.settings.dataPoint.width);
+                .classed(node.class, true)   
+                .style({
+                    'fill': "none",
+                    'stroke': (d: PulseChartSeries) => d.color,
+                    'stroke-width': (d: PulseChartSeries) => `${d.width}px`
+                })
+                .attr('d', d => line(d.data));
 
              selection.exit().remove();
         }
@@ -1275,15 +1281,15 @@ module powerbi.visuals.samples {
             settings.legend = PulseChart.getLegendSettings(objects);
             settings.colors = PulseChart.getDataColorsSettings(objects);*/
 
-            settings.popup = PulseChart.getPopupSettings(objects);
-            settings.xAxis = PulseChart.getAxisXSettings(objects);
+            settings.popup = this.getPopupSettings(objects);
+            settings.xAxis = this.getAxisXSettings(objects);
             settings.dataPoint = this.getDataPointSettings(objects);
             settings.playback = PulseChart.getPlaybackSettings(objects);
             
             return settings;
         }
 
-        private static getPopupSettings(objects: DataViewObjects): PulseChartPopup {
+        private getPopupSettings(objects: DataViewObjects): PulseChartPopup {
             var showAll = DataViewObjects.getValue<boolean>(
                 objects,
                 PulseChart.Properties["popup"]["showAll"],
@@ -1312,7 +1318,7 @@ module powerbi.visuals.samples {
             };
         }
 
-        private static getAxisXSettings(objects: DataViewObjects): PulseChartXAxisSettings {
+        private getAxisXSettings(objects: DataViewObjects): PulseChartXAxisSettings {
             var xAxisSettings: PulseChartXAxisSettings = <PulseChartXAxisSettings> {};
 
             xAxisSettings.step = DataViewObjects.getValue<number>(
