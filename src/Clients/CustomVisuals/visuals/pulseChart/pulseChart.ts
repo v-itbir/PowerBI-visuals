@@ -352,6 +352,7 @@ module powerbi.visuals.samples {
         private static DefaultFontFamily = 'cursive';
         private static DefaultFontColor = 'rgb(165, 172, 175)';
         private static DefaultBackgroundColor = '#243C18';
+        private static DefaultFormatString: string = "%H:mm";
         private static PaddingBetweenText = 15;
 
         private svg: D3.Selection;
@@ -891,7 +892,7 @@ module powerbi.visuals.samples {
                 axisPrecision: undefined
             });
 
-            properties.axis = this.createAxisX(data.categories, this.viewport.width, formatString, this.data.settings.xAxis.step);
+            properties.axis = this.createAxisX(data.categories, this.viewport.width, PulseChart.DefaultFormatString, this.data.settings.xAxis.step);
 
             return properties;
         }
