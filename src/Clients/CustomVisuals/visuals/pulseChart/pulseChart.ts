@@ -976,11 +976,12 @@ module powerbi.visuals.samples {
 
             dateValues = d3.time.minute.range(minDate, maxDate, step);
 
-            if ((step % 15) > 0) {
-                dateValues = dateValues.filter((date: Date) => {
-                    return date.getMinutes() !== 0;
-                });
-            }
+            // Uncomment these lines, if you don't want to see 8:00 when we use step === 34 minutes.
+            // if ((step % 15) > 0) {
+            //     dateValues = dateValues.filter((date: Date) => {
+            //         return date.getMinutes() !== 0;
+            //     });
+            // }
 
             return d3.svg.axis()
                 .scale(timeScale)
@@ -1117,7 +1118,9 @@ module powerbi.visuals.samples {
                     dy: "-0.5em"
                 });
 
-            rectElements = this.xAxis.selectAll("rect")[0];
+            rectElements = this.xAxis.selectAll("rect")[0].sort((a: Element, b: Element) => {
+                return $(a).offset().left - $(b).offset().left;
+            });
 
             var leftElement: JQuery = null,
                 rightElement: JQuery = null;
