@@ -571,6 +571,9 @@ module powerbi.visuals.samples {
                 //return;
             }
 
+            
+            
+             
             seriesLen = 1;//grouped.length;
             //console.log("seriesLen", seriesLen);
             
@@ -683,16 +686,25 @@ module powerbi.visuals.samples {
                     if (eventTitleValues[categoryIndex] ||
                         eventDescriptionValues[categoryIndex]) {
                            //tooltipInfo = TooltipBuilder.createTooltipInfo(formatStringProp, null /*categorical*/, categoryValue, null, categoryColumns, seriesData, null);                                          
+                         
+                         var time = categoryValue;
+                         
+                         if (isDateTime && categoryValue) {
+                            var formatterTime = valueFormatter.create({ format: "hh:mm"});
+                            time = formatterTime.format(categoryValue);
+                         }                         
+                         
                          popupInfo = {
-                             time: "9:15",
+                             time: time,
                              title: eventTitleValues[categoryIndex],
                              description: eventDescriptionValues[categoryIndex]
                          };
+                         
                         } 
                         
                         
                     var dataPoint: PulseChartDataPoint = {
-                        categoryValue: isDateTime && categoryValue ? categoryValue.getTime() : categoryValue,
+                        categoryValue: isDateTime && categoryValue ? categoryValue : categoryValue,
                         value: value,
                         categoryIndex: categoryIndex,
                         seriesIndex: seriesIndex,
@@ -1326,7 +1338,7 @@ module powerbi.visuals.samples {
 
                             return line(path);
                           })
-                
+                        .attr('stroke', "white")
                         .attr('stroke-width', "1px");
             
             var tooltipTriangle = tooltipRoot.append("path")
@@ -1400,18 +1412,7 @@ module powerbi.visuals.samples {
                           return  (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight  + 3)) : PulseChart.DefaultTooltipSettings.timeHeight - 3;
                       })
                      .text((d: PulseChartDataPoint) => {
-                         if (!d.popupInfo) {
-                             return "";
-                         }
-                         
-                         var textProperties = {
-                            text: d.popupInfo.time,
-                            fontFamily: "sans-serif",
-                            fontSize: "12px"
-                        };
-                                                 
-                         return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
-                                         PulseChart.DefaultTooltipSettings.timeWidth);
+                         return d.popupInfo.time;
                      });
                      
             var title = tooltipRoot.append("text")
