@@ -24,7 +24,7 @@
 *  THE SOFTWARE.
 */
  
-// /// <reference path="../../_references.ts"/>
+/// <reference path="../../_references.ts"/>
  
 module powerbi.visuals.samples {
     import SelectionManager = utility.SelectionManager;
@@ -84,7 +84,7 @@ module powerbi.visuals.samples {
     }
 
     export interface PulseChartPopup {
-        showAll: boolean
+        showAll: boolean;
     }
 
     export interface PulseChartSeriesSetting {
@@ -142,6 +142,17 @@ module powerbi.visuals.samples {
 
     interface PulseChartProperties {
         [objectName: string]: PulseChartProperty;
+    }
+
+    interface PulseChartXAxisProperties {
+        dates: Date[];
+        scale: D3.Scale.TimeScale;
+        formatter: IValueFormatter;
+    }
+
+    interface PulseChartPoint {
+        x: number;
+        value: Date;
     }
 
     export class PulseChart implements IVisual {
@@ -377,7 +388,7 @@ module powerbi.visuals.samples {
         private static DefaultBackgroundColor = '#243C18';
         private static DefaultFormatString: string = "%H:mm";
         private static PaddingBetweenText = 15;
-        private static MaxWidthOfLabel: number = 60;
+        private static MaxWidthOfLabel: number = 40;
 
         private svg: D3.Selection;
         private chart: D3.Selection;
@@ -614,14 +625,14 @@ module powerbi.visuals.samples {
                 for (var categoryIndex = 0, seriesCategoryIndex = 0, len = column.values.length; categoryIndex < len; categoryIndex++, seriesCategoryIndex++) {
                     var categoryValue = categoryValues[categoryIndex];
                     var value = AxisHelper.normalizeNonFiniteNumber(column.values[categoryIndex]);
-                                       
+
                     var identity = SelectionIdBuilder.builder()
                         .withCategory(column, categoryIndex)
-                        .createSelectionId();                        
-                        
+                        .createSelectionId();
+
                     var key = identity.getKey();
-                    var isGap: boolean = PulseChart.isGap(categoryValue, lastValue, isDateTime);                   
-           
+                    var isGap: boolean = PulseChart.isGap(categoryValue, lastValue, isDateTime);
+
                     if (isGap &&  dataPoints.length > 0) {
                         series.push({
                             displayName: grouped[seriesIndex].name,
@@ -637,9 +648,9 @@ module powerbi.visuals.samples {
                             width: width
                         });
                         seriesCategoryIndex = 0;
-                        dataPoints = [];                        
+                        dataPoints = [];
                     }
-                               
+
                     lastValue = categoryValue;
 
                     // When Scalar, skip null categories and null values so we draw connected lines and never draw isolated dots.
@@ -701,10 +712,8 @@ module powerbi.visuals.samples {
                              title: eventTitleValues[categoryIndex],
                              description: eventDescriptionValues[categoryIndex]
                          };
-                         
-                        } 
-                        
-                        
+                        }
+
                     var dataPoint: PulseChartDataPoint = {
                         categoryValue: isDateTime && categoryValue ? categoryValue : categoryValue,
                         value: value,
@@ -880,23 +889,26 @@ module powerbi.visuals.samples {
         }
 
         public calculateAxesProperties() {
+            var xAxes: D3.Svg.Axis[];
 
             this.data.xAxisProperties = this.getXAxisProperties();
             this.data.yAxisProperties = this.getYAxisProperties();
 
-            this.data.series.forEach((value: PulseChartSeries) => {
-                value.xAxis = this.createAxisX(
-                    value.data,
-                    <D3.Scale.LinearScale> this.data.xAxisProperties.scale,
-                    PulseChart.DefaultFormatString,
-                    this.data.settings.xAxis.step);
+            xAxes = this.createAxisX(
+                this.data.series,
+                <D3.Scale.LinearScale> this.data.xAxisProperties.scale,
+                PulseChart.DefaultFormatString,
+                this.data.settings.xAxis.step);
+
+            this.data.series.forEach((series: PulseChartSeries, index: number) => {
+                series.xAxis = xAxes[index];
             });
         }
-        
+
         private static isOrdinal(type: ValueType): boolean {
             return !!(type && (type.text || type.bool));
         }
-        
+
         private static createOrdinalDomain(data: PulseChartSeries[]): number[] {
             if (_.isEmpty(data)) {
                 return [];
@@ -955,40 +967,106 @@ module powerbi.visuals.samples {
             return properties;
         }
 
-        private createAxisX(dataPoints: PulseChartDataPoint[], originalScale: D3.Scale.LinearScale, formatString: string, step: number = 30): D3.Svg.Axis {
-            var formatter: IValueFormatter,
-                timeScale: D3.Scale.TimeScale,
-                minDate: Date = dataPoints[0].categoryValue || new Date(),
-                maxDate: Date = dataPoints[dataPoints.length - 1].categoryValue || new Date(),
-                minX: number = originalScale(dataPoints[0].categoryIndex),
-                maxX: number = originalScale(dataPoints[dataPoints.length - 1].categoryIndex),
-                dateValues: Date[] = [];
+        private createAxisX(series: PulseChartSeries[], originalScale: D3.Scale.LinearScale, formatString: string, step: number = 30): D3.Svg.Axis[] {
+            var xAxisProperties: PulseChartXAxisProperties[] = [];
 
-            formatter = valueFormatter.create({
-                format: formatString,
-                value: minDate,
-                value2: maxDate
+            xAxisProperties = series.map((seriesElement: PulseChartSeries) => {
+                var formatter: IValueFormatter,
+                    timeScale: D3.Scale.TimeScale,
+                    dataPoints: PulseChartDataPoint[] = seriesElement.data,
+                    minDate: Date = dataPoints[0].categoryValue,
+                    maxDate: Date = dataPoints[dataPoints.length - 1].categoryValue,
+                    minX: number = originalScale(dataPoints[0].categoryIndex),
+                    maxX: number = originalScale(dataPoints[dataPoints.length - 1].categoryIndex);
+
+                timeScale = d3.time.scale()
+                    .domain([minDate, maxDate])
+                    .rangeRound([minX, maxX]);
+
+                formatter = valueFormatter.create({
+                    format: formatString,
+                    value: minDate,
+                    value2: maxDate
+                });
+
+                return <PulseChartXAxisProperties> {
+                    dates: d3.time.minute.range(minDate, maxDate, step),
+                    scale: timeScale,
+                    formatter: formatter
+                };
             });
 
-            timeScale = d3.time.scale()
-                .domain([minDate, maxDate])
-                .rangeRound([minX, maxX]);
+            this.resolveIntersections(xAxisProperties);
 
-            dateValues = d3.time.minute.range(minDate, maxDate, step);
+            return xAxisProperties.map((properties: PulseChartXAxisProperties) => {
+                var dates: Date[] = properties.dates.filter((date: Date) => date !== null);
 
-            // Uncomment these lines, if you don't want to see 8:00 when we use step === 34 minutes.
-            // if ((step % 15) > 0) {
-            //     dateValues = dateValues.filter((date: Date) => {
-            //         return date.getMinutes() !== 0;
-            //     });
-            // }
+                return d3.svg.axis()
+                    .scale(properties.scale)
+                    .tickValues(dates)
+                    .tickFormat((value: Date) => {
+                        return properties.formatter.format(value);
+                    })
+            });
+        }
 
-            return d3.svg.axis()
-                .scale(timeScale)
-                .tickValues(dateValues)
-                .tickFormat((value: Date) => {
-                    return formatter.format(value);
-                });
+        private resolveIntersections(xAxisProperties: PulseChartXAxisProperties[]): void {
+            var leftPoint: PulseChartPoint = null,
+                rightPoint: PulseChartPoint = null,
+                currentPoint: PulseChartPoint = null;
+
+            xAxisProperties.forEach((properties: PulseChartXAxisProperties) => {
+                var scale: D3.Scale.TimeScale = properties.scale,
+                    length: number = properties.dates.length;
+
+                for (var i = 0; i < length; i++) {
+                    var currentDate: Date = properties.dates[i];
+
+                    currentPoint = {
+                        value: properties.dates[i],
+                        x: scale(currentDate)
+                    };
+
+                    if (!leftPoint) {
+                        var leftDate: Date = properties.dates[i - 1];
+
+                        leftPoint = {
+                            value: leftDate,
+                            x: scale(leftDate)
+                        };
+                    }
+
+                    if (this.isIntersect(leftPoint, currentPoint)) {
+                        properties.dates[i] = null;
+                        rightPoint = null;
+
+                        continue;
+                    }
+
+                    if (!rightPoint && i < length - 1) {
+                        var rightDate: Date = properties.dates[i + 1];
+
+                        rightPoint = {
+                            value: rightDate,
+                            x: scale(rightDate)
+                       };
+                    } else {
+                        leftPoint = currentPoint;
+                    }
+
+                    if (rightPoint && this.isIntersect(currentPoint, rightPoint)) {
+                        properties.dates[i + 1] = null;
+                        leftPoint = currentPoint;
+                        i++;
+                    }
+
+                    rightPoint = null;
+                }
+            });
+        }
+
+        private isIntersect(leftPoint: PulseChartPoint, rightPoint: PulseChartPoint): boolean {
+            return (leftPoint.x + PulseChart.MaxWidthOfLabel) > rightPoint.x;
         }
 
         /**
@@ -1004,7 +1082,7 @@ module powerbi.visuals.samples {
 
             var minY0 = <number>d3.min(data,(kv) => { return d3.min(kv.data, d => { return d.y; }); });
             var maxY0 = <number>d3.max(data, (kv) => { return d3.max(kv.data, d => { return d.y; }); });
-            
+
             var min = Math.min(minY0, -1 * maxY0);
             //console.log('min', min, 'min', minY0, 'max', maxY0);
             return [min, maxY0];
@@ -1056,13 +1134,7 @@ module powerbi.visuals.samples {
             var axisNodeSelection: D3.Selection,
                 axisNodeUpdateSelection: D3.UpdateSelection,
                 ticksSelection: D3.Selection,
-                ticksUpdateSelection: D3.UpdateSelection,
-                domainElement: Element,
-                rectElements: Element[];
-
-            var getWidth: (element: HTMLElement) => number = function (element: HTMLElement): number {
-                return (<any> d3.select(element.parentNode).select("text").node()).getBBox().width + 10;
-            };
+                ticksUpdateSelection: D3.UpdateSelection;
 
             axisNodeSelection = this.xAxis.selectAll(PulseChart.AxisNode.selector);
 
@@ -1081,7 +1153,7 @@ module powerbi.visuals.samples {
                             .duration(duration)
                             .call(data.series[index].xAxis.orient('bottom'));
                     });
-                })
+                });
 
             axisNodeUpdateSelection
                 .exit()
@@ -1097,13 +1169,9 @@ module powerbi.visuals.samples {
                 .enter()
                 .insert("rect", "text")
                 .attr({
-                    x: function () {
-                        return -getWidth(<HTMLElement> this) / 2;
-                    },
+                    x: -(PulseChart.MaxWidthOfLabel / 2),
                     y: "-0.7em",
-                    width: function () {
-                        return getWidth(<HTMLElement> this);
-                    },
+                    width: PulseChart.MaxWidthOfLabel,
                     height: "1.3em"
                 })
                 .classed("axisBox", true);
@@ -1118,46 +1186,9 @@ module powerbi.visuals.samples {
                     dy: "-0.5em"
                 });
 
-            rectElements = this.xAxis.selectAll("rect")[0].sort((a: Element, b: Element) => {
-                return $(a).offset().left - $(b).offset().left;
-            });
-
-            var leftElement: JQuery = null,
-                rightElement: JQuery = null;
-
-            for (var i = 1; i < rectElements.length; i++) {
-                var currentElement: JQuery = $(rectElements[i]);
-
-                if (!leftElement) {
-                    leftElement = $(rectElements[i - 1]);
-                }
-
-                if (this.isIntersect(leftElement, currentElement)) {
-                    currentElement.parent().remove();
-                    rightElement = null;
-                    continue;
-                }
-
-                if (!rightElement && i < rectElements.length - 1) {
-                    rightElement = $(rectElements[i + 1]);
-                }
-
-                if (rightElement && this.isIntersect(currentElement, rightElement)) {
-                    rightElement.parent().remove();
-                    leftElement = currentElement;
-                    i++;
-                }
-
-                rightElement = null;
-            }
-
             this.xAxis.selectAll(".domain")[0].forEach((element: Element) => {
                 element.parentNode.insertBefore(element, element.parentNode.firstChild);
             });
-        }
-
-        private isIntersect(leftElement: JQuery, rightElement: JQuery): boolean {
-            return (leftElement.offset().left + parseInt(leftElement.attr("width")) + 5) > rightElement.offset().left;
         }
 
         private renderYAxis(data: PulseChartData, duration: number): void {
@@ -1188,11 +1219,10 @@ module powerbi.visuals.samples {
                         
             this.drawLines(selection, data, duration);
             this.drawDots(selection, data, duration);
-            //this.drawTooltipLines(selection, data, duration);
-            //this.drawTooltips(selection, data, duration);
 
-                        
-            selection.exit().remove();
+            selection
+                .exit()
+                .remove();
         }
 
         private drawLines(rootSelection: D3.UpdateSelection, data: PulseChartData, duration: number) {
@@ -1271,16 +1301,15 @@ module powerbi.visuals.samples {
         
         private setSelectHandler(selection: D3.UpdateSelection, rootSelection: D3.UpdateSelection): void {
             var sm: SelectionManager = this.selectionManager;
-            
+
             this.setSelection(rootSelection);
-            
+
             selection.on("click", (d: PulseChartDataPoint) => {
-                                sm
-                                    .select(d.identity, d3.event.ctrlKey)
-                                    .then((selectionIds: SelectionId[]) => this.setSelection(rootSelection, selectionIds));
-                
-                                d3.event.stopPropagation();
-                         });
+                sm.select(d.identity, d3.event.ctrlKey)
+                    .then((selectionIds: SelectionId[]) => this.setSelection(rootSelection, selectionIds));
+
+                d3.event.stopPropagation();
+            });
 
             this.svg.on("click", () => {
                 this.selectionManager.clear();
@@ -1289,48 +1318,29 @@ module powerbi.visuals.samples {
         }        
 
         private setSelection(selection: D3.UpdateSelection, selectionIds?: SelectionId[]): void {
-
-            console.log("selected:", selectionIds);
-            
             this.drawTooltips(selection, this.data, selectionIds);
-            /*
-            this.drawTooltipLines(selection, this.data, selectionIds);
-            selection.transition()
-                .duration(this.durationAnimations)
-                .style("fill-opacity", this.MaxOpacity);
-
-            if (!selectionIds || !selectionIds.length) {
-                return;
-            }
-
-            selection
-                .filter((dotSelectionData: DotPlotDataPoint) =>
-                    !selectionIds.some((selectionId: SelectionId) => dotSelectionData.identity === selectionId))
-                .transition()
-                .duration(this.durationAnimations)
-                .style("fill-opacity", this.MinOpacity);*/
         }
-        
+
         private isPopupShow(d: PulseChartDataPoint, selectionIds?: SelectionId[]): boolean {
             var data = this.data;
-            
+
             if (!d.popupInfo) {
                 return false;
             }
-                    
+
             if (data &&
                 data.settings &&
                 data.settings.popup &&
                 data.settings.popup.showAll) {
                 return true;
             }
-            
+
             if (!selectionIds) {
                 return false;
-            } 
+            }
             return selectionIds.some((selectionId: SelectionId) => {
-                    return d.identity === selectionId;
-                  });
+                return d.identity === selectionId;
+            });
 
             return false;
         }
@@ -1567,13 +1577,13 @@ module powerbi.visuals.samples {
                          if (!d.popupInfo) {
                              return "";
                          }
-                         return d.popupInfo.description;
+                        //  return d.popupInfo.description;
                          var textProperties = {
                             text: d.popupInfo.description,
                             fontFamily: "sans-serif",
                             fontSize: "10px"
                         };
-                                
+
                          return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
                                          PulseChart.DefaultTooltipSettings.descriptionWidth);
                      })
@@ -1585,80 +1595,20 @@ module powerbi.visuals.samples {
                          }
                          
                      });
-             description
-                    .attr("x", (d: PulseChartDataPoint) => {
-                          return 0;
-                      })
-                    .attr("y", (d: PulseChartDataPoint) => {
-                          return (d.y > 0) ? (-1 * (marginTop + height - 26)) : 26;
-                      })
-                     
-             selection.exit().remove();
+
+                description
+                .attr("x", (d: PulseChartDataPoint) => {
+                    return 0;
+                })
+                .attr("y", (d: PulseChartDataPoint) => {
+                    return (d.y > 0) ? (-1 * (marginTop + height - 26)) : 26;
+                })
+
+             selection
+                .exit()
+                .remove();
         }
-/*
-        private drawTooltipLines(rootSelection: D3.UpdateSelection, data: PulseChartData, selectionIds?: SelectionId[]) {
-            var series: PulseChartSeries[] = data.series,
-                isScalar: boolean = data.isScalar,
-                xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
-                yScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.yAxisProperties.scale,
-                node: ClassAndSelector = PulseChart.TooltipLine,
-                sm = this.selectionManager;
-            
-            var line: D3.Svg.Line = d3.svg.line()
-                                                .x(d => d.x)
-                                                .y(d => d.y);
-            
-            var marginTop: number = PulseChart.DefaultTooltipSettings.marginTop;   
-            var width: number = PulseChart.DefaultTooltipSettings.width;   
-            var height: number = PulseChart.DefaultTooltipSettings.height;   
-               
-            var selection: D3.UpdateSelection = rootSelection.selectAll(node.selector).data(d => { 
-                return _.filter(d.data, (value: PulseChartDataPoint) => {
-                    return this.isPopupShow(value, selectionIds);
-                });
-             });
-             
-            selection.enter()
-                        .append("path")
-                        .classed(node.class, true);
-            selection
-                       .attr("display", (d: PulseChartDataPoint) => {
-                            return (d.popupInfo) ? "inherit" : "none";
-                        })
-                        .attr('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .attr('stroke', PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .attr('stroke-width', "1px")
-                        .attr('d', (d: PulseChartDataPoint) => { 
-                            var path = [
-                                { 
-                                  "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
-                                  "y": yScale(d.y),
-                                },
-                                { 
-                                  "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
-                                  "y": yScale(d.y),
-                                }];
-                            return line(path);
-                          })
-                          .transition()
-                          .duration(500)
-                          .attr('d', (d: PulseChartDataPoint) => { 
-                            var path = [
-                                { 
-                                  "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
-                                  "y": yScale(d.y),
-                                },
-                                { 
-                                  "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
-                                  "y": (d.y > 0) ? (-1 * marginTop) : this.viewport.height + marginTop,
-                                }];
-                            return line(path);
-                          });
-                        
-             selection.exit().remove();
-        }
-        */
-        
+
         private static getObjectsFromDataView(dataView: DataView): DataViewObjects {
             if (!dataView ||
                 !dataView.metadata ||
@@ -1672,23 +1622,13 @@ module powerbi.visuals.samples {
 
         private parseSettings(dataView: DataView): PulseChartSettings {
             var settings: PulseChartSettings = <PulseChartSettings>{},
-                objects: DataViewObjects;
-
-            //settings.displayName = PulseChart.DefaultSettings.displayName;
-            //settings.fillColor = PulseChart.DefaultSettings.fillColor;
-            objects = PulseChart.getObjectsFromDataView(dataView);
-
-            /*
-            settings.precision = PulseChart.getPrecision(objects);
-
-            settings.legend = PulseChart.getLegendSettings(objects);
-            settings.colors = PulseChart.getDataColorsSettings(objects);*/
+                objects: DataViewObjects = PulseChart.getObjectsFromDataView(dataView);
 
             settings.popup = this.getPopupSettings(objects);
             settings.xAxis = this.getAxisXSettings(objects);
             settings.series = this.getSeriesSettings(objects);
             settings.playback = PulseChart.getPlaybackSettings(objects);
-            
+
             return settings;
         }
 
@@ -1758,182 +1698,12 @@ module powerbi.visuals.samples {
 
             return playbackSettings;
         }
-/*
-        private getRecomendedFontProperties(text1: string, text2: string, parentViewport: IViewport): TextProperties {
-            var textProperties: TextProperties = {
-                fontSize: '',
-                fontFamily: PulseChart.DefaultFontFamily,
-                text: text1 + text2
-            };
 
-            var min = 1;
-            var max = 1000;
-            var i;
-            var maxWidth = parentViewport.width;
-            var width = 0;
-
-            while (min <= max) {
-                i = (min + max) / 2 | 0;
-
-                textProperties.fontSize = i + 'px';
-                width = TextMeasurementService.measureSvgTextWidth(textProperties);
-
-                if (maxWidth > width)
-                    min = i + 1;
-                else if (maxWidth < width)
-                    max = i - 1;
-                else
-                    break;
-            }
-
-            textProperties.fontSize = i + 'px';
-            width = TextMeasurementService.measureSvgTextWidth(textProperties);
-            if (width > maxWidth) {
-                i--;
-                textProperties.fontSize = i + 'px';
-            }
-
-            return textProperties;
-        }
-
-        private calculateLayout(data: PulseChartData, viewport: IViewport): PulseChartLayout {
-            var text1 = data.teamA.name;
-            var text2 = data.teamB.name;
-
-            var avaliableViewport: IViewport = {
-                height: viewport.height,
-                width: viewport.width - PulseChart.PaddingBetweenText
-            };
-            var recomendedFontProperties = this.getRecomendedFontProperties(text1, text2, avaliableViewport);
-
-            recomendedFontProperties.text = text1;
-            var width1 = TextMeasurementService.measureSvgTextWidth(recomendedFontProperties) | 0;
-
-            recomendedFontProperties.text = text2;
-            var width2 = TextMeasurementService.measureSvgTextWidth(recomendedFontProperties) | 0;
-
-            var padding = ((viewport.width - width1 - width2 - PulseChart.PaddingBetweenText) / 2) | 0;
-
-            recomendedFontProperties.text = text1 + text2;
-            var offsetHeight = (TextMeasurementService.measureSvgTextHeight(recomendedFontProperties)) | 0;
-
-            var max = data.teamA.value + data.teamB.value;
-            var availableHeight = viewport.height - offsetHeight;
-            var y1 = (((max - data.teamA.value) / max) * availableHeight + offsetHeight / 2) | 0;
-            var y2 = (((max - data.teamB.value) / max) * availableHeight + offsetHeight / 2) | 0;
-
-            return {
-                x1: padding,
-                x2: padding + width1 + PulseChart.PaddingBetweenText,
-                y1: y1,
-                y2: y2,
-                fontSize: recomendedFontProperties.fontSize
-            };
-        }
-
-        private ensureStartState(layout: PulseChartLayout, viewport: IViewport) {
-            if (this.isFirstTime) {
-                this.isFirstTime = false;
-                var startY = viewport.height / 2;
-                this.textOne.attr(
-                    {
-                        'x': layout.x1,
-                        'y': startY
-                    });
-
-                this.textTwo.attr(
-                    {
-                        'x': layout.x2,
-                        'y': startY
-                    });
-            }
-        }
-
-        private clearSelection() {
-            this.selectionManager.clear().then(() => {
-                this.clearSelectionUI();
-            });
-        }
-
-        private clearSelectionUI() {
-            this.textOne.style('stroke', '#FFF').style('stroke-width', 0);
-            this.textTwo.style('stroke', '#FFF').style('stroke-width', 0);
-        }
-
-        private updateSelectionUI(ids: SelectionId[]) {
-            this.textOne.style('stroke', '#FFF').style('stroke-width', SelectionManager.containsSelection(ids, this.data.teamA.identity) ? '2px' : '0px');
-            this.textTwo.style('stroke', '#FFF').style('stroke-width', SelectionManager.containsSelection(ids, this.data.teamB.identity) ? '2px' : '0px');
-        }
-
-        private draw(data: PulseChartData, duration: number, viewport: IViewport) {
-            var easeName = 'back';
-            var textOne = this.textOne;
-            var textTwo = this.textTwo;
-
-            this.svg
-                .attr({
-                    'height': viewport.height,
-                    'width': viewport.width
-                })
-                .on('click', () => {
-                    this.clearSelection();
-                })
-                .style('background-color', data.background);
-
-            var layout = this.calculateLayout(data, viewport);
-
-            this.ensureStartState(layout, viewport);
-
-            textOne
-                .style('font-size', layout.fontSize)
-                .style('fill', data.teamA.color)
-                .on('click', () => {
-                    this.selectionManager.select(data.teamA.identity, d3.event.ctrlKey).then((ids) => {
-                        this.updateSelectionUI(ids);
-                    });
-                    d3.event.stopPropagation();
-                })
-                .text(data.teamA.name);
-
-            textTwo
-                .style('font-size', layout.fontSize)
-                .style('fill', data.teamB.color)
-                .on('click', () => {
-                    this.selectionManager.select(data.teamB.identity, d3.event.ctrlKey).then((ids) => {
-                        this.updateSelectionUI(ids);
-                    });
-                    d3.event.stopPropagation();
-                })
-                .text(data.teamB.name);
-
-            textOne.transition()
-                .duration(duration)
-                .ease(easeName)
-                .attr({
-                    y: layout.y1,
-                    x: layout.x1
-                });
-
-            textTwo.transition()
-                .duration(duration)
-                .ease(easeName)
-                .attr({
-                    y: layout.y2,
-                    x: layout.x2
-                });
-        }
-
-        public destroy(): void {
-            this.svg = null;
-        }
-        */
-        
         private clearChart(): void {
         //    this.chart.selectAll('*').remove();
           //  this.axisY.selectAll('*').remove();
             //this.xAxis.selectAll('*').remove();
         }
-
 
         public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {
             var enumeration = new ObjectEnumerationBuilder(),
