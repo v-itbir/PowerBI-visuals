@@ -1136,36 +1136,11 @@ module powerbi.visuals.samples {
                         
             this.drawLines(selection, data, duration);
             this.drawDots(selection, data, duration);
-            this.drawTooltipLines(selection, data, duration);
-            this.drawTooltips(selection, data, duration);
-            /*
-            var lineSelection = selection.selectAll(PulseChart.Line.selector).data(d => [d]);
-            lineSelection
-                .enter()
-                .append('path');
-            lineSelection
-                .classed(PulseChart.Line.class, true)    
-                .attr('fill', "none")///(d: PulseChartSeries) => d.color)
-                .attr('stroke', (d: PulseChartSeries) => d.color)
-                .attr('d', d => line(d.data))
-                .attr('stroke-width', "2px");
-                /*.style('fill-opacity', PulseChart.DimmedFillOpacity)
-                .on('click', function(d: PulseChartSeries) {
-                    sm.select(d.identity).then(ids => {
-                        if (ids.length > 0) {
-                            selection.style('fill-opacity', PulseChart.DimmedFillOpacity);
-                            d3.select(this).transition()
-                                .duration(duration)
-                                .style('fill-opacity', PulseChart.FillOpacity);
-                        } else {
-                            selection.style('fill-opacity', PulseChart.DimmedFillOpacity);
-                        }
-                    });
-                    d3.event.stopPropagation();
-                });*/
+            //this.drawTooltipLines(selection, data, duration);
+            //this.drawTooltips(selection, data, duration);
+
                         
             selection.exit().remove();
-            //this.renderTooltip(selection, xScale, data.isScalar);
         }
         
         private drawLines(rootSelection: D3.UpdateSelection, data: PulseChartData, duration: number) {
@@ -1224,37 +1199,50 @@ module powerbi.visuals.samples {
                         .attr("cy", (d: PulseChartDataPoint) => yScale(d.y))
                         .attr("r", 5)
                         .style("fill", PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .style("cursor", "pointer");
+                        .style("cursor", "pointer")
+                        .on("mouseover", function (d) {
+                           d3.select(this)
+                            .style("fill", "#494949")
+                            .attr("r", 6);
+                        })
+                        .on("mouseout", function (d) {
+                           d3.select(this)
+                            .style("fill", PulseChart.DefaultTooltipSettings.backgroundColor)
+                            .attr("r", 5);
+                        });
 
-             this.setSelectHandler(selection);
+             this.setSelectHandler(selection, rootSelection);
                              
              selection.exit().remove();
         }
         
         
-        private setSelectHandler(selection: D3.UpdateSelection): void {
+        private setSelectHandler(selection: D3.UpdateSelection, rootSelection: D3.UpdateSelection): void {
             var sm: SelectionManager = this.selectionManager;
             
-            this.setSelection(selection);
-
+            this.setSelection(rootSelection);
+            
             selection.on("click", (d: PulseChartDataPoint) => {
                                 sm
                                     .select(d.identity, d3.event.ctrlKey)
-                                    .then((selectionIds: SelectionId[]) => this.setSelection(selection, selectionIds));
+                                    .then((selectionIds: SelectionId[]) => this.setSelection(rootSelection, selectionIds));
                 
                                 d3.event.stopPropagation();
                          });
 
             this.svg.on("click", () => {
                 this.selectionManager.clear();
-                this.setSelection(selection);
+                this.setSelection(rootSelection);
             });
         }        
         
         private setSelection(selection: D3.UpdateSelection, selectionIds?: SelectionId[]): void {
 
             console.log("selected:", selectionIds);
+            
+            this.drawTooltips(selection, this.data, selectionIds);
             /*
+            this.drawTooltipLines(selection, this.data, selectionIds);
             selection.transition()
                 .duration(this.durationAnimations)
                 .style("fill-opacity", this.MaxOpacity);
@@ -1270,8 +1258,32 @@ module powerbi.visuals.samples {
                 .duration(this.durationAnimations)
                 .style("fill-opacity", this.MinOpacity);*/
         }
+        
+        private isPopupShow(d: PulseChartDataPoint, selectionIds?: SelectionId[]): boolean {
+            var data = this.data;
+            
+            if (!d.popupInfo) {
+                return false;
+            }
+                    
+            if (data &&
+                data.settings &&
+                data.settings.popup &&
+                data.settings.popup.showAll) {
+                return true;
+            }
+            
+            if (!selectionIds) {
+                return false;
+            } 
+            return selectionIds.some((selectionId: SelectionId) => {
+                    return d.identity === selectionId;
+                  });
+
+            return false;
+        }
     
-        private drawTooltips(rootSelection: D3.UpdateSelection, data: PulseChartData, duration: number) {
+        private drawTooltips(rootSelection: D3.UpdateSelection, data: PulseChartData, selectionIds?: SelectionId[]) {
             var series: PulseChartSeries[] = data.series,
                 isScalar: boolean = data.isScalar,
                 xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
@@ -1285,11 +1297,16 @@ module powerbi.visuals.samples {
 
             var marginTop: number = PulseChart.DefaultTooltipSettings.marginTop;   
             var width: number = PulseChart.DefaultTooltipSettings.width;   
-            var height: number = PulseChart.DefaultTooltipSettings.height;    
+            var height: number = PulseChart.DefaultTooltipSettings.height;   
+            
+            var topShift: number = 20; 
+            
+            var durationTooltip: number = 1000;
+            var durationLine: number = 700;
                
             var selection: D3.UpdateSelection = rootSelection.selectAll(node.selector).data(d => { 
                 return _.filter(d.data, (value: PulseChartDataPoint) => {
-                    return value.popupInfo && data.settings.popup.showAll;
+                    return this.isPopupShow(value, selectionIds);
                 });
              });
 
@@ -1300,10 +1317,14 @@ module powerbi.visuals.samples {
             selection
                     .attr("transform", (d: PulseChartDataPoint) => {                        
                         var x: number = xScale(isScalar ? d.categoryValue : d.categoryIndex) - width/2;
-                        var y: number = (d.y > 0) ? (-1 * marginTop + 20) : this.viewport.height + marginTop;
+                        var y: number = (d.y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
                         return SVGUtil.translate(x, y);
-                    });
-                        
+                    })
+                    .style("opacity", 0)
+                    .transition()
+                    .duration(durationTooltip)
+                    .style("opacity", 1);
+               
                 
             var tooltipRoot = selection
                     .selectAll(PulseChart.TooltipRect.selector)
@@ -1330,7 +1351,7 @@ module powerbi.visuals.samples {
                                   "x": width-2,
                                   "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
                                 },
-                                { 
+                                {
                                   "x": width-2,
                                   "y": (d.y > 0) ? (-1 * marginTop) : 0,
                                 }
@@ -1340,15 +1361,12 @@ module powerbi.visuals.samples {
                           })
                         .attr('stroke', "white")
                         .attr('stroke-width', "1px");
-            
+
             var tooltipTriangle = tooltipRoot.append("path")
             tooltipTriangle         
-                        .classed(PulseChart.TooltipTriangle.class, true)  
-                        .attr("display", (d: PulseChartDataPoint) => {
-                            return (d.popupInfo) ? "inherit" : "none";
-                        })
+                        .classed(PulseChart.TooltipTriangle.class, true)
                         .attr('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .attr('d', (d: PulseChartDataPoint) => { 
+                        .attr('d', (d: PulseChartDataPoint) => {
                             var path = [
                                 {
                                   "x": width/2 - 5,
@@ -1367,8 +1385,41 @@ module powerbi.visuals.samples {
                             return line(path);
                           })                
                         .attr('stroke-width', "1px");   
-            
-            
+                        
+                        //yScale(d.y),
+            var tooltipLine = tooltipRoot.append("path")
+            tooltipLine
+                        .classed(PulseChart.TooltipLine.class, true)
+                        .attr('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .attr('stroke', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .attr('stroke-width', "1px")
+                        .attr('d', (d: PulseChartDataPoint) => { 
+                            var path = [
+                                { 
+                                  "x": width/2,
+                                  "y": (d.y > 0) ? (-1 * marginTop) + topShift + yScale(d.y) : 0 - yScale(d.y), //start
+                                },
+                                { 
+                                  "x": width/2,
+                                  "y": (d.y > 0) ? (-1 * marginTop) + topShift + yScale(d.y) : 0 - yScale(d.y),
+                                }];
+                            return line(path);
+                          })
+                          .transition()
+                          .duration(durationLine)
+                          .attr('d', (d: PulseChartDataPoint) => { 
+                            var path = [
+                                { 
+                                  "x": width/2,
+                                  "y": (d.y > 0) ? (-1 * marginTop) + topShift + yScale(d.y) : 0 - yScale(d.y),
+                                },
+                                { 
+                                  "x": width/2,
+                                  "y": (d.y > 0) ? (-1 * marginTop) : 0, //end
+                                }];
+                            return line(path);
+                          });
+
             var timeRect = tooltipRoot.append("path")
             timeRect           
                         .classed(PulseChart.TooltipRect.class, true)
@@ -1492,8 +1543,8 @@ module powerbi.visuals.samples {
                      
              selection.exit().remove();
         }
-
-        private drawTooltipLines(rootSelection: D3.UpdateSelection, data: PulseChartData, duration: number) {
+/*
+        private drawTooltipLines(rootSelection: D3.UpdateSelection, data: PulseChartData, selectionIds?: SelectionId[]) {
             var series: PulseChartSeries[] = data.series,
                 isScalar: boolean = data.isScalar,
                 xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
@@ -1511,7 +1562,7 @@ module powerbi.visuals.samples {
                
             var selection: D3.UpdateSelection = rootSelection.selectAll(node.selector).data(d => { 
                 return _.filter(d.data, (value: PulseChartDataPoint) => {
-                    return value.popupInfo && data.settings.popup.showAll;
+                    return this.isPopupShow(value, selectionIds);
                 });
              });
              
@@ -1533,6 +1584,20 @@ module powerbi.visuals.samples {
                                 },
                                 { 
                                   "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
+                                  "y": yScale(d.y),
+                                }];
+                            return line(path);
+                          })
+                          .transition()
+                          .duration(500)
+                          .attr('d', (d: PulseChartDataPoint) => { 
+                            var path = [
+                                { 
+                                  "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
+                                  "y": yScale(d.y),
+                                },
+                                { 
+                                  "x": xScale(isScalar ? d.categoryValue : d.categoryIndex),
                                   "y": (d.y > 0) ? (-1 * marginTop) : this.viewport.height + marginTop,
                                 }];
                             return line(path);
@@ -1540,7 +1605,7 @@ module powerbi.visuals.samples {
                         
              selection.exit().remove();
         }
-        
+        */
         
         private static getObjectsFromDataView(dataView: DataView): DataViewObjects {
             if (!dataView ||
