@@ -60,6 +60,7 @@ module powerbi.visuals.samples {
         color: string;
         identity: SelectionId;
         width: number;
+        xAxis?: D3.Svg.Axis;
     }
 
    export interface PulseChartTooltipData {
@@ -428,6 +429,7 @@ module powerbi.visuals.samples {
         private static Node: ClassAndSelector  = createClassAndSelector('node');
         private static LineNode: ClassAndSelector = createClassAndSelector('lineNode');
         private static Axis: ClassAndSelector = createClassAndSelector('axis');
+        private static AxisNode: ClassAndSelector = createClassAndSelector('axisNode');
         private static Dot: ClassAndSelector  = createClassAndSelector('dot');
         private static Dots: ClassAndSelector = createClassAndSelector('dots');
         private static Tooltip: ClassAndSelector = createClassAndSelector('Tooltip');
@@ -793,16 +795,14 @@ module powerbi.visuals.samples {
 
         public init(options: VisualInitOptions): void {
             this.selectionManager = new SelectionManager({ hostServices: options.host });
-            var svg: D3.Selection = this.svg = d3.select(options.element.get(0)).append('svg');
-            svg.attr('class', 'pulseChart');
+            var svg: D3.Selection = this.svg = d3.select(options.element.get(0))
+                .append('svg')
+                .attr('class', 'pulseChart');
 
             var chart: D3.Selection = this.chart = svg.append('g').attr('class', PulseChart.Chart.class);
-            /*
-            chart.append('g').attr('class', PulseChart.Lines.class);
-            chart.append('g').attr('class', PulseChart.Dots.class);
-            */
-            var xAxis: D3.Selection = this.xAxis = svg.append('g').attr('class', 'x axis');
-            var yAxis: D3.Selection = this.yAxis = svg.append('g').attr('class', 'y axis');
+
+            this.xAxis = svg.append('g').attr('class', 'x axis');
+            this.yAxis = svg.append('g').attr('class', 'y axis');
 
             var style: IVisualStyle = options.style;
 
@@ -838,9 +838,8 @@ module powerbi.visuals.samples {
             if (!data) {
                 return;
             }
-            //var duration = options.suppressAnimations ? 0 : AnimatorCommon.MinervaAnimationDuration;
-            //this.draw(data, duration, options.viewport);
-            var axes: IAxisProperties[] = this.calculateAxesProperties(null);
+
+            this.calculateAxesProperties();
             this.render(true);
         }
  
@@ -869,8 +868,7 @@ module powerbi.visuals.samples {
 
             this.updateElements(viewport.height, viewport.width);
         }
-        
-        
+
         private updateElements(height: number, width: number): void {
             this.svg.attr({
                 'height': height,
@@ -880,13 +878,19 @@ module powerbi.visuals.samples {
             this.yAxis.attr('transform', SVGUtil.translate(this.margin.left, this.margin.top));
             this.xAxis.attr('transform', SVGUtil.translate(this.margin.left, this.margin.top + (this.viewport.height / 2)));
         }
-        
-        public calculateAxesProperties(options: CalculateScaleAndDomainOptions): IAxisProperties[] {
+
+        public calculateAxesProperties() {
 
             this.data.xAxisProperties = this.getXAxisProperties();
             this.data.yAxisProperties = this.getYAxisProperties();
-            
-            return [this.data.xAxisProperties, this.data.yAxisProperties];
+
+            this.data.series.forEach((value: PulseChartSeries) => {
+                value.xAxis = this.createAxisX(
+                    value.data,
+                    <D3.Scale.LinearScale> this.data.xAxisProperties.scale,
+                    PulseChart.DefaultFormatString,
+                    this.data.settings.xAxis.step);
+            });
         }
         
         private static isOrdinal(type: ValueType): boolean {
@@ -948,38 +952,34 @@ module powerbi.visuals.samples {
                 axisPrecision: undefined
             });
 
-            properties.axis = this.createAxisX(data.categories, this.viewport.width, PulseChart.DefaultFormatString, this.data.settings.xAxis.step);
-
             return properties;
         }
 
-        private createAxisX(dates: Date[], width: number, formatString: string, step: number = 30): D3.Svg.Axis {
+        private createAxisX(dataPoints: PulseChartDataPoint[], originalScale: D3.Scale.LinearScale, formatString: string, step: number = 30): D3.Svg.Axis {
             var formatter: IValueFormatter,
                 timeScale: D3.Scale.TimeScale,
-                maxCountOfLabels: number = this.viewport.width / PulseChart.MaxWidthOfLabel,
-                minDate: Date = dates[0] || new Date(),
-                maxDate: Date = dates[dates.length - 1] || new Date(),
-                range: number = maxDate.getTime() - minDate.getTime(),
+                minDate: Date = dataPoints[0].categoryValue || new Date(),
+                maxDate: Date = dataPoints[dataPoints.length - 1].categoryValue || new Date(),
+                minX: number = originalScale(dataPoints[0].categoryIndex),
+                maxX: number = originalScale(dataPoints[dataPoints.length - 1].categoryIndex),
                 dateValues: Date[] = [];
 
             formatter = valueFormatter.create({
                 format: formatString,
-                value: dates[0],
-                value2: dates[dates.length - 1]
+                value: minDate,
+                value2: maxDate
             });
 
             timeScale = d3.time.scale()
-                .domain([dates[0], dates[dates.length - 1]])
-                .rangeRound([0, this.viewport.width]);
+                .domain([minDate, maxDate])
+                .rangeRound([minX, maxX]);
 
-            step *= 60 * 1000;
+            dateValues = d3.time.minute.range(minDate, maxDate, step);
 
-            if (maxCountOfLabels < range / step) {
-                step = Math.floor(range / maxCountOfLabels);
-            }
-
-            for (var date = minDate.getTime(); date <= maxDate.getTime(); date += step) {
-                dateValues.push(new Date(date));
+            if ((step % 15) > 0) {
+                dateValues = dateValues.filter((date: Date) => {
+                    return date.getMinutes() !== 0;
+                });
             }
 
             return d3.svg.axis()
@@ -1029,6 +1029,7 @@ module powerbi.visuals.samples {
 
             return yAxisProperties;
         }
+
         public render(suppressAnimations: boolean): CartesianVisualRenderResult {
             var duration = AnimatorCommon.GetAnimationDuration(this.animator, suppressAnimations);
             var result: CartesianVisualRenderResult;
@@ -1039,45 +1040,51 @@ module powerbi.visuals.samples {
                 return;
             }
 
-            this.renderAxis(data, duration);
+            this.renderAxes(data, duration);
             this.renderChart(data, duration);
-            
-            /*
-            
-            //calculateLegend
-            var legendData = this.createLegendDataPoints(0);
 
-            if (data.settings && data.settings.legend) {
-                LegendData.update(legendData, data.settings.legend);
-                this.legend.changeOrientation(data.settings.legend.position);
-            }
-            var isDrawLegend = false;
-            
-            if (isDrawLegend) {
-                this.legend.drawLegend(legendData, this.viewport);
-            }
-            */
             return result;
         }
-        
-        private renderAxis(data: PulseChartData, duration: number): void {
-            var xAxis: D3.Svg.Axis = data.xAxisProperties.axis,
-                yAxis: D3.Svg.Axis = data.yAxisProperties.axis,
+
+        private renderAxes(data: PulseChartData, duration: number): void {
+            this.renderXAxis(data, duration);
+            this.renderYAxis(data, duration);
+        }
+
+        private renderXAxis(data: PulseChartData, duration: number): void {
+            var axisNodeSelection: D3.Selection,
+                axisNodeUpdateSelection: D3.UpdateSelection,
                 ticksSelection: D3.Selection,
                 ticksUpdateSelection: D3.UpdateSelection,
-                domainElement: Element;
+                domainElement: Element,
+                rectElements: Element[];
 
             var getWidth: (element: HTMLElement) => number = function (element: HTMLElement): number {
                 return (<any> d3.select(element.parentNode).select("text").node()).getBBox().width + 10;
             };
 
-            xAxis.orient('bottom');
-            yAxis.orient('left');
+            axisNodeSelection = this.xAxis.selectAll(PulseChart.AxisNode.selector);
 
-            this.xAxis
-                .transition()
-                .duration(duration)
-                .call(xAxis);
+            axisNodeUpdateSelection = axisNodeSelection.data(data.series);
+
+            axisNodeUpdateSelection
+                .enter()
+                .append("g")
+                .classed(PulseChart.AxisNode.class, true);
+
+            axisNodeUpdateSelection
+                .call((selection: D3.Selection) => {
+                    selection[0].forEach((selectionElement: Element, index: number) => {
+                        d3.select(selectionElement)
+                            .transition()
+                            .duration(duration)
+                            .call(data.series[index].xAxis.orient('bottom'));
+                    });
+                })
+
+            axisNodeUpdateSelection
+                .exit()
+                .remove();
 
             ticksSelection = this.xAxis.selectAll(".tick");
 
@@ -1107,19 +1114,61 @@ module powerbi.visuals.samples {
             this.xAxis
                 .selectAll("text")
                 .attr({
-                    dy: "-0.2em"
+                    dy: "-0.5em"
                 });
 
-            var domainElement = this.xAxis.select(".domain").node();
-            domainElement.parentNode.insertBefore(domainElement, domainElement.parentNode.firstChild);
+            rectElements = this.xAxis.selectAll("rect")[0];
 
-/*
+            var leftElement: JQuery = null,
+                rightElement: JQuery = null;
+
+            for (var i = 1; i < rectElements.length; i++) {
+                var currentElement: JQuery = $(rectElements[i]);
+
+                if (!leftElement) {
+                    leftElement = $(rectElements[i - 1]);
+                }
+
+                if (this.isIntersect(leftElement, currentElement)) {
+                    currentElement.parent().remove();
+                    rightElement = null;
+                    continue;
+                }
+
+                if (!rightElement && i < rectElements.length - 1) {
+                    rightElement = $(rectElements[i + 1]);
+                }
+
+                if (rightElement && this.isIntersect(currentElement, rightElement)) {
+                    rightElement.parent().remove();
+                    leftElement = currentElement;
+                    i++;
+                }
+
+                rightElement = null;
+            }
+
+            this.xAxis.selectAll(".domain")[0].forEach((element: Element) => {
+                element.parentNode.insertBefore(element, element.parentNode.firstChild);
+            });
+        }
+
+        private isIntersect(leftElement: JQuery, rightElement: JQuery): boolean {
+            return (leftElement.offset().left + parseInt(leftElement.attr("width")) + 5) > rightElement.offset().left;
+        }
+
+        private renderYAxis(data: PulseChartData, duration: number): void {
+            var yAxis: D3.Svg.Axis = data.yAxisProperties.axis;
+
+            yAxis.orient('left');
+
+            /*
             this.yAxis
                 .transition()
                 .duration(duration)
                 .call(yAxis);*/
         }
-  
+
           private renderChart(data: PulseChartData, duration: number): void {
             var series: PulseChartSeries[] = data.series,
                 isScalar: boolean = data.isScalar,
@@ -1142,7 +1191,7 @@ module powerbi.visuals.samples {
                         
             selection.exit().remove();
         }
-        
+
         private drawLines(rootSelection: D3.UpdateSelection, data: PulseChartData, duration: number) {
             var series: PulseChartSeries[] = data.series,
                 isScalar: boolean = data.isScalar,
@@ -1235,7 +1284,7 @@ module powerbi.visuals.samples {
                 this.setSelection(rootSelection);
             });
         }        
-        
+
         private setSelection(selection: D3.UpdateSelection, selectionIds?: SelectionId[]): void {
 
             console.log("selected:", selectionIds);
