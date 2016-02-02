@@ -86,7 +86,9 @@ module powerbi.visuals.samples {
         width: number;
         color: string
         fontSize: number;
-        fontColor: string
+        fontColor: string;
+        timeColor: string;
+        timeFill: string;
     }
 
     module PulseChartPopupShow {
@@ -313,6 +315,14 @@ module powerbi.visuals.samples {
                             displayName: "Text color",
                             type: { fill: { solid: { color: true } } }
                         },
+                        timeColor: {
+                            displayName: "Time color",
+                            type: { fill: { solid: { color: true } } }
+                        },
+                        timeFill: {
+                            displayName: "Time fill",
+                            type: { fill: { solid: { color: true } } }
+                        },
                     }
                 },
                 xAxis: {
@@ -393,6 +403,14 @@ module powerbi.visuals.samples {
                     objectName: "popup",
                     propertyName: "fontColor"
                 },
+                timeColor: {
+                    objectName: "popup",
+                    propertyName: "timeColor"
+                },
+                timeFill: {
+                    objectName: "popup",
+                    propertyName: "timeFill"
+                },
             },
             xAxis: {
                 show: {
@@ -427,7 +445,9 @@ module powerbi.visuals.samples {
                 width: 100,
                 color: "#808181",
                 fontSize: 10,
-                fontColor: 'white'
+                fontColor: 'white',
+                timeColor: 'white',
+                timeFill: '#010101'
             },
             series: {
                 fill: "#3779B7",
@@ -1642,7 +1662,7 @@ module powerbi.visuals.samples {
             timeRect.enter().append("path")
             timeRect
                         .classed(PulseChart.TooltipTimeRect.class, true)
-                        .style('fill', "#010101")
+                        .style('fill', this.data.settings.popup.timeFill)
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
                                 { 
@@ -1677,7 +1697,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                    .style("fill", "white")
+                    .style("fill", this.data.settings.popup.timeColor)
                     .attr("x", (d: PulseChartDataPoint) => {
                           return width - PulseChart.DefaultTooltipSettings.timeWidth;
                       })
@@ -1832,12 +1852,28 @@ module powerbi.visuals.samples {
 
             var fontColor = fontColorHelper.getColorForMeasure(objects, "");
 
+            var timeColorHelper = new ColorHelper(
+                this.colors,
+                PulseChart.Properties["popup"]["timeColor"],
+                PulseChart.DefaultSettings.popup.timeColor);
+
+            var timeColor = timeColorHelper.getColorForMeasure(objects, "");
+
+            var timeFillHelper = new ColorHelper(
+                this.colors,
+                PulseChart.Properties["popup"]["timeFill"],
+                PulseChart.DefaultSettings.popup.timeFill);
+
+            var timeFill = timeFillHelper.getColorForMeasure(objects, "");
+
             return {
                 showType,
                 width,
                 color,
                 fontSize,
-                fontColor
+                fontColor,
+                timeColor,
+                timeFill
             };
         }
 
@@ -1953,7 +1989,9 @@ module powerbi.visuals.samples {
                     width: popupSettings.width,
                     color: popupSettings.color,
                     fontColor: popupSettings.fontColor,
-                    fontSize: popupSettings.fontSize    
+                    fontSize: popupSettings.fontSize,
+                    timeColor: popupSettings.timeColor,
+                    timeFill: popupSettings.timeFill    
                 }
             };
 
