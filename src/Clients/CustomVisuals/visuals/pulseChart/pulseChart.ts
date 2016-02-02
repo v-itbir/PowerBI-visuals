@@ -24,7 +24,7 @@
 *  THE SOFTWARE.
 */
  
-// /// <reference path="../../_references.ts"/>
+//// <reference path="../../_references.ts"/>
  
 module powerbi.visuals.samples {
     import SelectionManager = utility.SelectionManager;
@@ -1530,271 +1530,197 @@ module powerbi.visuals.samples {
             var durationTooltip: number = 1000;
             var durationLine: number = 700;
 
-            var tooltipShiftY = (y: number) => {
-                return (y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
-            }
+            var tooltipShiftY = (y: number) => (y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
                
-            var selection: D3.UpdateSelection = rootSelection.selectAll(node.selector).data(d => { 
-                return _.filter(d.data, (value: PulseChartDataPoint) => {
-                    return this.isPopupShow(value, selectionIds);
-                });
-             });
+            var tooltipRoot: D3.UpdateSelection = rootSelection.selectAll(node.selector)
+                .data(d => _.filter(d.data, (value: PulseChartDataPoint) => this.isPopupShow(value, selectionIds)));
 
-            selection.enter()
-                        .append("g")
-                        .classed(node.class, true);
+            tooltipRoot.enter().append("g").classed(node.class, true);
            
-            selection
-                    .attr("transform", (d: PulseChartDataPoint) => {                        
-                        var x: number = xScale(isScalar ? d.categoryValue : d.categoryIndex) - width/2;
-                        var y: number = tooltipShiftY(d.y);
-                        return SVGUtil.translate(x, y);
-                    })
-                    .style("opacity", 0)
-                    .transition()
-                    .duration(durationTooltip)
-                    .style("opacity", 1);
+            tooltipRoot
+                .attr("transform", (d: PulseChartDataPoint) => {                        
+                    var x: number = xScale(isScalar ? d.categoryValue : d.categoryIndex) - width/2;
+                    var y: number = tooltipShiftY(d.y);
+                    return SVGUtil.translate(x, y);
+                })
+                .style("opacity", 0)
+                .transition()
+                .duration(durationTooltip)
+                .style("opacity", 1);
                
                 
-            var tooltip = selection
-                .selectAll(PulseChart.TooltipRect.selector)
-                .data(d => [d]);
-            tooltip.enter().append("path")
-            tooltip           
-                        .classed(PulseChart.TooltipRect.class, true)
-                        .attr("display", (d: PulseChartDataPoint) => {
-                            return (d.popupInfo) ? "inherit" : "none";
-                        })
-                        .style('fill', this.data.settings.popup.color)
-                        .attr('d', (d: PulseChartDataPoint) => { 
-                            var path = [
-                                { 
-                                  "x": -2,
-                                  "y": (d.y > 0) ? (-1 * marginTop) : 0,
-                                },
-                                { 
-                                  "x": -2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
-                                },
-                                { 
-                                  "x": width-2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
-                                },
-                                {
-                                  "x": width-2,
-                                  "y": (d.y > 0) ? (-1 * marginTop) : 0,
-                                }
-                                ];
+            var tooltipRect = tooltipRoot.selectAll(PulseChart.TooltipRect.selector).data(d => [d]);
+            tooltipRect.enter().append("path").classed(PulseChart.TooltipRect.class, true);
+            tooltipRect           
+                .attr("display", (d: PulseChartDataPoint) => d.popupInfo ? "inherit" : "none")
+                .style('fill', this.data.settings.popup.color)
+                .attr('d', (d: PulseChartDataPoint) => { 
+                    var path = [
+                        { 
+                            "x": -2,
+                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                        },
+                        { 
+                            "x": -2,
+                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
+                        },
+                        { 
+                            "x": width-2,
+                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
+                        },
+                        {
+                            "x": width-2,
+                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                        }
+                    ];
+                    return line(path);
+                });
+                /*
+            .style('stroke', "white")
+            .style('stroke-width', "1px");*/
 
-                            return line(path);
-                          });
-                          /*
-                        .style('stroke', "white")
-                        .style('stroke-width', "1px");*/
-
-            var tooltipTriangle = selection
-                .selectAll(PulseChart.TooltipTriangle.selector)
-                .data(d => [d]);
-            tooltipTriangle.enter().append("path")
+            var tooltipTriangle = tooltipRoot.selectAll(PulseChart.TooltipTriangle.selector).data(d => [d]);
+            tooltipTriangle.enter().append("path").classed(PulseChart.TooltipTriangle.class, true);
             tooltipTriangle         
-                        .classed(PulseChart.TooltipTriangle.class, true)
-                        .style('fill', this.data.settings.popup.color)
-                        .attr('d', (d: PulseChartDataPoint) => {
-                            var path = [
-                                {
-                                  "x": width/2 - 5,
-                                  "y": (d.y > 0) ? (-1 * marginTop) : 0,
-                                },
-                                {
-                                  "x": width/2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop - 5)) : -5,
-                                },
-                                {
-                                  "x": width/2 + 5,
-                                  "y": (d.y > 0) ? (-1 * marginTop) : 0,
-                                },
-                                ];
-
-                            return line(path);
-                          })                
-                        .style('stroke-width', "1px");   
+                .style('fill', this.data.settings.popup.color)
+                .attr('d', (d: PulseChartDataPoint) => {
+                    var path = [
+                        {
+                            "x": width/2 - 5,
+                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                        },
+                        {
+                            "x": width/2,
+                            "y": (d.y > 0) ? (-1 * (marginTop - 5)) : -5,
+                        },
+                        {
+                            "x": width/2 + 5,
+                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                        },
+                    ];
+                    return line(path);
+                })                
+                .style('stroke-width', "1px");    
                         
-            var tooltipLine = selection
-                .selectAll(PulseChart.TooltipLine.selector)
-                .data(d => [d]);
-            tooltipLine.enter().append("path")
-
+            var tooltipLine = tooltipRoot.selectAll(PulseChart.TooltipLine.selector).data(d => [d]);
+            tooltipLine.enter().append("path").classed(PulseChart.TooltipLine.class, true);
             tooltipLine
-                        .classed(PulseChart.TooltipLine.class, true)
-                        .style('fill', this.data.settings.popup.color)
-                        .style('stroke', this.data.settings.popup.color)
-                        .style('stroke-width', "1px")
-                        .attr('d', (d: PulseChartDataPoint) => { 
-                            var path = [
-                                { 
-                                  "x": width/2,
-                                  "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y), //start
-                                },
-                                { 
-                                  "x": width/2,
-                                  "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
-                                }];
-                            return line(path);
-                          })
-                          .transition()
-                          .duration(durationLine)
-                          .attr('d', (d: PulseChartDataPoint) => { 
-                            var path = [
-                                { 
-                                  "x": width/2,
-                                  "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
-                                },
-                                { 
-                                  "x": width/2,
-                                  "y": (d.y > 0) ? (-1 * marginTop) : 0, //end
-                                }];
-                            return line(path);
-                          });
+                .style('fill', this.data.settings.popup.color)
+                .style('stroke', this.data.settings.popup.color)
+                .style('stroke-width', "1px")
+                .attr('d', (d: PulseChartDataPoint) => { 
+                    var path = [
+                        { 
+                            "x": width/2,
+                            "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y), //start
+                        },
+                        { 
+                            "x": width/2,
+                            "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
+                        }];
+                    return line(path);
+                })
+                .transition()
+                .duration(durationLine)
+                .attr('d', (d: PulseChartDataPoint) => { 
+                    var path = [
+                        { 
+                            "x": width/2,
+                            "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
+                        },
+                        { 
+                            "x": width/2,
+                            "y": (d.y > 0) ? (-1 * marginTop) : 0, //end
+                        }];
+                    return line(path);
+                });
 
-            var timeRect = selection
-                .selectAll(PulseChart.TooltipTimeRect.selector)
-                .data(d => [d]);
-            timeRect.enter().append("path")
+            var timeRect = tooltipRoot.selectAll(PulseChart.TooltipTimeRect.selector).data(d => [d]);
+            timeRect.enter().append("path").classed(PulseChart.TooltipTimeRect.class, true);
             timeRect
-                        .classed(PulseChart.TooltipTimeRect.class, true)
-                        .style('fill', this.data.settings.popup.timeFill)
-                        .attr('d', (d: PulseChartDataPoint) => { 
-                            var path = [
-                                { 
-                                  "x": width - PulseChart.DefaultTooltipSettings.timeWidth - 2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop + height)) : 0,
-                                },
-                                { 
-                                  "x": width - PulseChart.DefaultTooltipSettings.timeWidth  -2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight)) : PulseChart.DefaultTooltipSettings.timeHeight,
-                                },
-                                { 
-                                  "x": width-2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight)) : PulseChart.DefaultTooltipSettings.timeHeight,
-                                },
-                                { 
-                                  "x": width-2,
-                                  "y": (d.y > 0) ? (-1 * (marginTop + height)) : 0,
-                                }
-                                ];
+                .style('fill', this.data.settings.popup.timeFill)
+                .attr('d', (d: PulseChartDataPoint) => { 
+                    var path = [
+                        { 
+                            "x": width - PulseChart.DefaultTooltipSettings.timeWidth - 2,
+                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : 0,
+                        },
+                        { 
+                            "x": width - PulseChart.DefaultTooltipSettings.timeWidth  -2,
+                            "y": (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight)) : PulseChart.DefaultTooltipSettings.timeHeight,
+                        },
+                        { 
+                            "x": width-2,
+                            "y": (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight)) : PulseChart.DefaultTooltipSettings.timeHeight,
+                        },
+                        { 
+                            "x": width-2,
+                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : 0,
+                        }
+                    ];
+                    return line(path);
+                });
 
-                            return line(path);
-                          });
-
-            var time = selection
-                .selectAll(PulseChart.TooltipTime.selector)
-                .data(d => [d]);
-            time.enter().append("text")
+            var time = tooltipRoot.selectAll(PulseChart.TooltipTime.selector).data(d => [d]);
+            time.enter().append("text").classed(PulseChart.TooltipTime.class, true);
             time
-                     .classed(PulseChart.TooltipTime.class, true)
-                     .style({
-                         "font-family": "sans-serif",
-                         "font-weight": "bold",
-                         "font-size": "12px"
-                      })
-                    .style("fill", this.data.settings.popup.timeColor)
-                    .attr("x", (d: PulseChartDataPoint) => {
-                          return width - PulseChart.DefaultTooltipSettings.timeWidth;
-                      })
-                     .attr("y", (d: PulseChartDataPoint) => {
-                          return  (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight  + 3)) : PulseChart.DefaultTooltipSettings.timeHeight - 3;
-                      })
-                     .text((d: PulseChartDataPoint) => {
-                         return d.popupInfo.time;
-                     });
+                .style({
+                    "font-family": "sans-serif",
+                    "font-weight": "bold",
+                    "font-size": "12px"
+                })
+                .style("fill", this.data.settings.popup.timeColor)
+                .attr("x", (d: PulseChartDataPoint) => width - PulseChart.DefaultTooltipSettings.timeWidth)
+                .attr("y", (d: PulseChartDataPoint) => (d.y > 0) 
+                    ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight  + 3)) 
+                    : PulseChart.DefaultTooltipSettings.timeHeight - 3)
+                .text((d: PulseChartDataPoint) =>  d.popupInfo.time);
                      
-            var title = selection
-                .selectAll(PulseChart.TooltipTitle.selector)
-                .data(d => [d]);
-            title.enter().append("text")
+            var title = tooltipRoot.selectAll(PulseChart.TooltipTitle.selector).data(d => [d]);
+            title.enter().append("text").classed(PulseChart.TooltipTitle.class, true);
             title
-                     .classed(PulseChart.TooltipTitle.class, true)
-                     .style({
-                         "font-family": "sans-serif",
-                         "font-weight": "bold",
-                         "font-size": "12px"
-                      })
-                    .style("fill", this.data.settings.popup.fontColor)
-                     //.attr("stroke", "white")
-                     .attr("x", (d: PulseChartDataPoint) => {
-                          return 0;
-                      })
-                     .attr("y", (d: PulseChartDataPoint) => {
-                          return(d.y > 0) ? (-1 * (marginTop + height - 12)) : 12;
-                      })
-                     .text((d: PulseChartDataPoint) => {
-                         if (!d.popupInfo) {
-                             return "";
-                         }
+                .style({
+                    "font-family": "sans-serif",
+                    "font-weight": "bold",
+                    "font-size": "12px"
+                })
+                .style("fill", this.data.settings.popup.fontColor)
+                //.attr("stroke", "white")
+                .attr("x", (d: PulseChartDataPoint) => 0)
+                .attr("y", (d: PulseChartDataPoint) => (d.y > 0) ? (-1 * (marginTop + height - 12)) : 12)
+                .text((d: PulseChartDataPoint) => {
+                    if (!d.popupInfo) {
+                        return "";
+                    }
                          
-                         var textProperties = {
-                            text: d.popupInfo.title,
-                            fontFamily: "sans-serif",
-                            fontSize: "12px"
-                        };
+                    var textProperties = {
+                        text: d.popupInfo.title || "",
+                        fontFamily: "sans-serif",
+                        fontSize: "12px"
+                    };
                                                  
-                         return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
-                                         PulseChart.DefaultTooltipSettings.titleWidth);
-                     });
+                    return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties,
+                             PulseChart.DefaultTooltipSettings.titleWidth);
+                });
             
             var textFontSize = `${this.data.settings.popup.fontSize}px`;
-
-            var description = selection
-                .selectAll(PulseChart.TooltipDescription.selector)
-                .data(d => [d]);
-            description.enter().append("text")
+            var description = tooltipRoot.selectAll(PulseChart.TooltipDescription.selector).data(d => [d]);
+            description.enter().append("text").classed(PulseChart.TooltipDescription.class, true);
             description
-                .classed(PulseChart.TooltipDescription.class, true)
                 .style({
                     "font-family": "sans-serif",
                     "font-size": textFontSize
                 })
                 .style("fill", this.data.settings.popup.fontColor)
-                .attr("x", (d: PulseChartDataPoint) => {
-                    return 0;
-                })
-                .attr("y", (d: PulseChartDataPoint) => {
-                    return 0;
-                })
-                .text((d: PulseChartDataPoint) => {
-                    if (!d.popupInfo) {
-                        return "";
-                    }
-                    return d.popupInfo.description;
-                    /*var textProperties = {
-                       text: d.popupInfo.description,
-                       fontFamily: "sans-serif",
-                       fontSize: textFontSize
-                   };
-                           
-                    return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
-                                    PulseChart.DefaultTooltipSettings.descriptionWidth);*/
-                });
-            description.call(d => {
-                for (var i: number = 0; i < d.length; i++) {
-                    var node = d[i][0];
-                    if (node) {
-                        powerbi.TextMeasurementService.wordBreak(node, PulseChart.DefaultTooltipSettings.descriptionWidth, 50);
-                    }
-                }
-            });
-
-            description
-                .attr("x", (d: PulseChartDataPoint) => {
-                    return 0;
-                })
-                .attr("y", (d: PulseChartDataPoint) => {
-                    return (d.y > 0) ? (-1 * (marginTop + height - 26)) : 26;
-                })
-
-            selection
-                .exit()
-                .remove();
+                .attr("x", (d: PulseChartDataPoint) => 0)
+                .attr("y", (d: PulseChartDataPoint) => 0)
+                .text((d: PulseChartDataPoint) => d.popupInfo && d.popupInfo.description)
+                .call(d => d.forEach(x => x[0] && 
+                    powerbi.TextMeasurementService.wordBreak(x[0], PulseChart.DefaultTooltipSettings.descriptionWidth, 50)))
+                .attr("x", (d: PulseChartDataPoint) => 0)
+                .attr("y", (d: PulseChartDataPoint) => (d.y > 0) ? (-1 * (marginTop + height - 26)) : 26)
+                
+            tooltipRoot.exit().remove();
         }
 
         private static getObjectsFromDataView(dataView: DataView): DataViewObjects {
