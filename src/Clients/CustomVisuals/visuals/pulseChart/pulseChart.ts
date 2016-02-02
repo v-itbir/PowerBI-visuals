@@ -1388,6 +1388,10 @@ module powerbi.visuals.samples {
                 return false;
             }
 
+            if (data.settings.popup.showType == PulseChartPopupShow.HIDE) {
+                return false;
+            }
+
             if (data &&
                 data.settings &&
                 data.settings.popup &&
