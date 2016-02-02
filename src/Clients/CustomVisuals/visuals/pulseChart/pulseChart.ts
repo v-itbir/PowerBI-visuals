@@ -894,6 +894,7 @@ module powerbi.visuals.samples {
                 'height': height,
                 'width': width
             });
+
             this.chart.attr('transform', SVGUtil.translate(this.margin.left, this.margin.top));
             this.yAxis.attr('transform', SVGUtil.translate(this.margin.left, this.margin.top));
             this.xAxis.attr('transform', SVGUtil.translate(this.margin.left, this.margin.top + (this.viewport.height / 2)));
@@ -1415,7 +1416,7 @@ module powerbi.visuals.samples {
                         .attr("display", (d: PulseChartDataPoint) => {
                             return (d.popupInfo) ? "inherit" : "none";
                         })
-                        .attr('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
                                 { 
@@ -1438,13 +1439,13 @@ module powerbi.visuals.samples {
 
                             return line(path);
                           })
-                        .attr('stroke', "white")
-                        .attr('stroke-width', "1px");
+                        .style('stroke', "white")
+                        .style('stroke-width', "1px");
 
             var tooltipTriangle = tooltipRoot.append("path")
             tooltipTriangle         
                         .classed(PulseChart.TooltipTriangle.class, true)
-                        .attr('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
                         .attr('d', (d: PulseChartDataPoint) => {
                             var path = [
                                 {
@@ -1463,15 +1464,15 @@ module powerbi.visuals.samples {
 
                             return line(path);
                           })                
-                        .attr('stroke-width', "1px");   
+                        .style('stroke-width', "1px");   
                         
                         //yScale(d.y),
             var tooltipLine = tooltipRoot.append("path")
             tooltipLine
                         .classed(PulseChart.TooltipLine.class, true)
-                        .attr('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .attr('stroke', PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .attr('stroke-width', "1px")
+                        .style('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('stroke', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('stroke-width', "1px")
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
                                 { 
@@ -1502,7 +1503,7 @@ module powerbi.visuals.samples {
             var timeRect = tooltipRoot.append("path")
             timeRect           
                         .classed(PulseChart.TooltipRect.class, true)
-                        .attr('fill', "#010101")
+                        .style('fill', "#010101")
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
                                 { 
@@ -1534,7 +1535,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                     .attr("fill", "white")
+                     .style("fill", "white")
                      .attr("x", (d: PulseChartDataPoint) => {
                           return width - PulseChart.DefaultTooltipSettings.timeWidth;
                       })
@@ -1553,7 +1554,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                     .attr("fill", "white")
+                     .style("fill", "white")
                      //.attr("stroke", "white")
                      .attr("x", (d: PulseChartDataPoint) => {
                           return 0;
@@ -1583,7 +1584,7 @@ module powerbi.visuals.samples {
                          "font-family": "sans-serif",
                          "font-size": "10px"
                       })
-                     .attr("fill", "white")
+                     .style("fill", "white")
                      .attr("x", (d: PulseChartDataPoint) => {
                           return 0;
                       })
