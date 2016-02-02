@@ -72,7 +72,6 @@ module powerbi.visuals.samples {
 
     export interface PulseChartDataPoint extends LineChartDataPoint {
        y?: number;
-       // y1?: number;
        popupInfo?: PulseChartTooltipData;
     }
 
@@ -100,6 +99,7 @@ module powerbi.visuals.samples {
     }
 
     export interface PulseChartXAxisSettings {
+        show: boolean;
         step: number;
     }
 
@@ -115,7 +115,7 @@ module powerbi.visuals.samples {
         playback: PulseChartPlaybackSetting;
     }
 
-    export interface PulseChartData /*extends LineChartData*/ {
+    export interface PulseChartData {
         categoryMetadata: DataViewMetadataColumn;
         hasHighlights?: boolean;
 
@@ -164,7 +164,7 @@ module powerbi.visuals.samples {
             EventTitle: "EventTitle",
             EventDescription: "EventDescription",
         };
-        
+
         public static capabilities: VisualCapabilities = {
             dataRoles: [
                 {
@@ -285,6 +285,10 @@ module powerbi.visuals.samples {
                 xAxis: {
                     displayName: data.createDisplayNameGetter('Visual_XAxis'),
                     properties: {
+                        show: {
+                            displayName: data.createDisplayNameGetter("Visual_Show"),
+                            type: { bool: true }
+                        },
                         step: {
                             displayName: "Step In Minutes",
                             type: { numeric: true }
@@ -301,7 +305,7 @@ module powerbi.visuals.samples {
                         pauseDuration: {
                             displayName: "Pause Duration",
                             type: { numeric: true }
-                        },                        
+                        },
                         autoplayPauseDuration: {
                             displayName: "Autoplay Pause Duration",
                             type: { numeric: true }
@@ -342,6 +346,10 @@ module powerbi.visuals.samples {
                 }
             },
             xAxis: {
+                show: {
+                    objectName: "xAxis",
+                    propertyName: "show"
+                },
                 step: {
                     objectName: "xAxis",
                     propertyName: "step"
@@ -374,7 +382,8 @@ module powerbi.visuals.samples {
                 showByDefault: true
             },
             xAxis: {
-                step: 30
+                step: 30,
+                show: true
             },
             playback: {
                 autoplay: true,
@@ -427,7 +436,7 @@ module powerbi.visuals.samples {
             timeWidth: 35,
             timeHeight: 15,
             titleWidth: 60,
-            descriptionWidth: 96,    
+            descriptionWidth: 96
         }
 
         private static MinInterval = 60 * 1000;
@@ -466,6 +475,7 @@ module powerbi.visuals.samples {
             } else {
                 this.behavior = new PulseChartBehavior([new ColumnChartWebBehavior()]);
             }
+
             this.margin = PulseChart.DefaultMargin;
         }
         
@@ -477,9 +487,10 @@ module powerbi.visuals.samples {
                   return i;
               }
           }
+
           return -1;
         }
-        
+
         public converter(dataView: DataView,
                                 isScalar: boolean,
                                 interactivityService?: IInteractivityService): PulseChartData {
@@ -898,7 +909,8 @@ module powerbi.visuals.samples {
                 this.data.series,
                 <D3.Scale.LinearScale> this.data.xAxisProperties.scale,
                 PulseChart.DefaultFormatString,
-                this.data.settings.xAxis.step);
+                this.data.settings.xAxis.step,
+                this.data.settings.xAxis.show);
 
             this.data.series.forEach((series: PulseChartSeries, index: number) => {
                 series.xAxis = xAxes[index];
@@ -967,7 +979,7 @@ module powerbi.visuals.samples {
             return properties;
         }
 
-        private createAxisX(series: PulseChartSeries[], originalScale: D3.Scale.LinearScale, formatString: string, step: number = 30): D3.Svg.Axis[] {
+        private createAxisX(series: PulseChartSeries[], originalScale: D3.Scale.LinearScale, formatString: string, step: number = 30, show: boolean = true): D3.Svg.Axis[] {
             var xAxisProperties: PulseChartXAxisProperties[] = [];
 
             xAxisProperties = series.map((seriesElement: PulseChartSeries) => {
@@ -977,7 +989,8 @@ module powerbi.visuals.samples {
                     minDate: Date = dataPoints[0].categoryValue,
                     maxDate: Date = dataPoints[dataPoints.length - 1].categoryValue,
                     minX: number = originalScale(dataPoints[0].categoryIndex),
-                    maxX: number = originalScale(dataPoints[dataPoints.length - 1].categoryIndex);
+                    maxX: number = originalScale(dataPoints[dataPoints.length - 1].categoryIndex),
+                    dates: Date[] = [];
 
                 timeScale = d3.time.scale()
                     .domain([minDate, maxDate])
@@ -989,8 +1002,12 @@ module powerbi.visuals.samples {
                     value2: maxDate
                 });
 
+                if (show) {
+                    dates = d3.time.minute.range(minDate, maxDate, step);
+                }
+
                 return <PulseChartXAxisProperties> {
-                    dates: d3.time.minute.range(minDate, maxDate, step),
+                    dates: dates,
                     scale: timeScale,
                     formatter: formatter
                 };
@@ -1670,6 +1687,11 @@ module powerbi.visuals.samples {
         private getAxisXSettings(objects: DataViewObjects): PulseChartXAxisSettings {
             var xAxisSettings: PulseChartXAxisSettings = <PulseChartXAxisSettings> {};
 
+            xAxisSettings.show = DataViewObjects.getValue<boolean>(
+                objects,
+                PulseChart.Properties["xAxis"]["show"],
+                PulseChart.DefaultSettings.xAxis.show);
+
             xAxisSettings.step = DataViewObjects.getValue<number>(
                 objects,
                 PulseChart.Properties["xAxis"]["step"],
@@ -1761,6 +1783,7 @@ module powerbi.visuals.samples {
                 displayName: "xAxis",
                 selector: null,
                 properties: {
+                    show: xAxisSettings.show,
                     step: xAxisSettings.step
                 }
             });
