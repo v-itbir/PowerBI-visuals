@@ -84,6 +84,8 @@ module powerbi.visuals.samples {
 
     export interface PulseChartPopup {
         showAll: boolean;
+        fontSize: number;
+        fontColor: string
     }
 
     export interface PulseChartSeriesSetting {
@@ -280,6 +282,14 @@ module powerbi.visuals.samples {
                             displayName: "Show All",
                             type: { bool: true }
                         },
+                        fontSize: {
+                            displayName: "Text size",
+                            type: { formatting: { fontSize: true } }
+                        },
+                        fontColor: {
+                            displayName: "Text color",
+                            type: { fill: { solid: { color: true } } }
+                        },
                     }
                 },
                 xAxis: {
@@ -343,7 +353,15 @@ module powerbi.visuals.samples {
                 showAll: {
                     objectName: "popup",
                     propertyName: "showAll"
-                }
+                },
+                fontSize: {
+                    objectName: "popup",
+                    propertyName: "fontSize"
+                },
+                fontColor: {
+                    objectName: "popup",
+                    propertyName: "fontColor"
+                },
             },
             xAxis: {
                 show: {
@@ -374,7 +392,9 @@ module powerbi.visuals.samples {
         private static DefaultSettings: PulseChartSettings = {
             precision: 0,
             popup: {
-                showAll: true
+                showAll: true,
+                fontSize: 10,
+                fontColor: 'white'
             },
             series: {
                 fill: "#3779B7",
@@ -1535,8 +1555,8 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                     .style("fill", "white")
-                     .attr("x", (d: PulseChartDataPoint) => {
+                    .attr("fill", this.data.settings.popup.fontColor)
+                    .attr("x", (d: PulseChartDataPoint) => {
                           return width - PulseChart.DefaultTooltipSettings.timeWidth;
                       })
                      .attr("y", (d: PulseChartDataPoint) => {
@@ -1554,7 +1574,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                     .style("fill", "white")
+                    .attr("fill", this.data.settings.popup.fontColor)
                      //.attr("stroke", "white")
                      .attr("x", (d: PulseChartDataPoint) => {
                           return 0;
@@ -1576,36 +1596,38 @@ module powerbi.visuals.samples {
                          return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
                                          PulseChart.DefaultTooltipSettings.titleWidth);
                      });
-                     
-           var description = tooltipRoot.append("text")
-            description 
-                     .classed(PulseChart.TooltipDescription.class, true)
-                     .style({
-                         "font-family": "sans-serif",
-                         "font-size": "10px"
-                      })
-                     .style("fill", "white")
-                     .attr("x", (d: PulseChartDataPoint) => {
-                          return 0;
-                      })
-                     .attr("y", (d: PulseChartDataPoint) => {
-                          return 0;
-                      })
-                     .text((d: PulseChartDataPoint) => {
-                         if (!d.popupInfo) {
-                             return "";
-                         }
-                        //  return d.popupInfo.description;
-                         var textProperties = {
-                            text: d.popupInfo.description,
-                            fontFamily: "sans-serif",
-                            fontSize: "10px"
-                        };
+            
+            var textFontSize = `${this.data.settings.popup.fontSize}px`;
 
-                         return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
-                                         PulseChart.DefaultTooltipSettings.descriptionWidth);
-                     })
-                     .call(d => {
+            var description = tooltipRoot.append("text");
+            description
+                .classed(PulseChart.TooltipDescription.class, true)
+                .style({
+                    "font-family": "sans-serif",
+                    "font-size": textFontSize
+                })
+                .attr("fill", this.data.settings.popup.fontColor)
+                .attr("x", (d: PulseChartDataPoint) => {
+                    return 0;
+                })
+                .attr("y", (d: PulseChartDataPoint) => {
+                    return 0;
+                })
+                .text((d: PulseChartDataPoint) => {
+                    if (!d.popupInfo) {
+                        return "";
+                    }
+                    return d.popupInfo.description;
+                    /*var textProperties = {
+                       text: d.popupInfo.description,
+                       fontFamily: "sans-serif",
+                       fontSize: textFontSize
+                   };
+                           
+                    return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
+                                    PulseChart.DefaultTooltipSettings.descriptionWidth);*/
+                });
+            description.call(d => {
                          for (var i: number = 0; i < d.length; i++) {
                              var node = d[i][0];
                              powerbi.TextMeasurementService.wordBreak(node, PulseChart.DefaultTooltipSettings.descriptionWidth, 
@@ -1655,8 +1677,23 @@ module powerbi.visuals.samples {
                 objects,
                 PulseChart.Properties["popup"]["showAll"],
                 PulseChart.DefaultSettings.popup.showAll);
+
+            var fontSize = DataViewObjects.getValue<number>(
+                objects,
+                PulseChart.Properties["popup"]["fontSize"],
+                PulseChart.DefaultSettings.popup.fontSize);
+
+            var colorHelper = new ColorHelper(
+                this.colors,
+                PulseChart.Properties["popup"]["fontColor"],
+                PulseChart.DefaultSettings.popup.fontColor);
+
+            var fontColor = colorHelper.getColorForMeasure(objects, "");
+
             return {
-                showAll
+                showAll,
+                fontSize,
+                fontColor
             };
         }
 
@@ -1768,7 +1805,9 @@ module powerbi.visuals.samples {
                 displayName: "popup",
                 selector: null,
                 properties: {
-                    showAll: popupSettings.showAll
+                    showAll: popupSettings.showAll,
+                    fontColor: popupSettings.fontColor,
+                    fontSize: popupSettings.fontSize    
                 }
             };
 
