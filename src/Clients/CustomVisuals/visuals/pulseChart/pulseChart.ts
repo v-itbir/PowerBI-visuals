@@ -46,7 +46,6 @@ module powerbi.visuals.samples {
     export interface TooltipSettings {
         backgroundColor: string;
         marginTop: number;
-        width: number;
         height: number;
         timeWidth: number;
         timeHeight: number;
@@ -84,6 +83,7 @@ module powerbi.visuals.samples {
 
     export interface PulseChartPopup {
         showAll: boolean;
+        width: number;
         fontSize: number;
         fontColor: string
     }
@@ -282,6 +282,12 @@ module powerbi.visuals.samples {
                             displayName: "Show All",
                             type: { bool: true }
                         },
+                        width: {
+                            displayName: 'Width',
+                            type: { 
+                                numeric: true
+                            }
+                        },
                         fontSize: {
                             displayName: "Text size",
                             type: { formatting: { fontSize: true } }
@@ -354,6 +360,10 @@ module powerbi.visuals.samples {
                     objectName: "popup",
                     propertyName: "showAll"
                 },
+                width: {
+                    objectName: "popup",
+                    propertyName: "width"
+                },
                 fontSize: {
                     objectName: "popup",
                     propertyName: "fontSize"
@@ -393,6 +403,7 @@ module powerbi.visuals.samples {
             precision: 0,
             popup: {
                 showAll: true,
+                width: 100,
                 fontSize: 10,
                 fontColor: 'white'
             },
@@ -451,7 +462,6 @@ module powerbi.visuals.samples {
         private static DefaultTooltipSettings: TooltipSettings = {
             backgroundColor: "#808181",
             marginTop: 20,
-            width: 100,
             height: 64,
             timeWidth: 35,
             timeHeight: 15,
@@ -1396,7 +1406,7 @@ module powerbi.visuals.samples {
                 .y(d => d.y);
 
             var marginTop: number = PulseChart.DefaultTooltipSettings.marginTop;   
-            var width: number = PulseChart.DefaultTooltipSettings.width;   
+            var width: number = this.data.settings.popup.width;   
             var height: number = PulseChart.DefaultTooltipSettings.height;   
             
             var topShift: number = 20; 
@@ -1678,6 +1688,13 @@ module powerbi.visuals.samples {
                 PulseChart.Properties["popup"]["showAll"],
                 PulseChart.DefaultSettings.popup.showAll);
 
+            var width = DataViewObjects.getValue<number>(
+                objects,
+                PulseChart.Properties["popup"]["width"],
+                PulseChart.DefaultSettings.popup.width);
+
+            width = Math.max(0, width);
+
             var fontSize = DataViewObjects.getValue<number>(
                 objects,
                 PulseChart.Properties["popup"]["fontSize"],
@@ -1692,6 +1709,7 @@ module powerbi.visuals.samples {
 
             return {
                 showAll,
+                width,
                 fontSize,
                 fontColor
             };
@@ -1806,6 +1824,7 @@ module powerbi.visuals.samples {
                 selector: null,
                 properties: {
                     showAll: popupSettings.showAll,
+                    width: popupSettings.width,
                     fontColor: popupSettings.fontColor,
                     fontSize: popupSettings.fontSize    
                 }
