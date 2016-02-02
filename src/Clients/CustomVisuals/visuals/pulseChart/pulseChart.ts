@@ -1388,15 +1388,17 @@ module powerbi.visuals.samples {
                 return false;
             }
 
-            if (data.settings.popup.showType == PulseChartPopupShow.HIDE) {
-                return false;
-            }
+            
 
             if (data &&
                 data.settings &&
-                data.settings.popup &&
-                data.settings.popup.showType == PulseChartPopupShow.ALWAYS) {
-                return true;
+                data.settings.popup) {
+                if (data.settings.popup.showType == PulseChartPopupShow.ALWAYS) {
+                    return true;
+                }
+                if (data.settings.popup.showType == PulseChartPopupShow.HIDE) {
+                    return false;
+                }
             }
 
             if (!selectionIds) {
