@@ -24,7 +24,7 @@
 *  THE SOFTWARE.
 */
  
-/// <reference path="../../_references.ts"/>
+// - /// <reference path="../../_references.ts"/>
  
 module powerbi.visuals.samples {
     import SelectionManager = utility.SelectionManager;
@@ -82,10 +82,22 @@ module powerbi.visuals.samples {
     }
 
     export interface PulseChartPopup {
-        showAll: boolean;
+        showType: string;
         width: number;
         fontSize: number;
         fontColor: string
+    }
+
+    module PulseChartPopupShow {
+        export var HIDE: string = 'Hide';
+        export var SELECTED: string = 'Selected';
+        export var ALWAYS: string = 'Always';
+
+        export var type: IEnumType = createEnumType([
+            { value: HIDE, displayName: PulseChartPopupShow.HIDE },
+            { value: SELECTED, displayName: PulseChartPopupShow.SELECTED },
+            { value: ALWAYS, displayName: PulseChartPopupShow.ALWAYS },
+        ]);
     }
 
     export interface PulseChartSeriesSetting {
@@ -278,9 +290,9 @@ module powerbi.visuals.samples {
                 popup: {
                     displayName: 'Popup',
                     properties: {
-                        showAll: {
-                            displayName: "Show All",
-                            type: { bool: true }
+                        showType: {
+                            displayName: "Show",
+                            type: { enumeration: PulseChartPopupShow.type }
                         },
                         width: {
                             displayName: 'Width',
@@ -356,9 +368,9 @@ module powerbi.visuals.samples {
                 }
             },
             popup: {
-                showAll: {
+                showType: {
                     objectName: "popup",
-                    propertyName: "showAll"
+                    propertyName: "showType"
                 },
                 width: {
                     objectName: "popup",
@@ -402,7 +414,7 @@ module powerbi.visuals.samples {
         private static DefaultSettings: PulseChartSettings = {
             precision: 0,
             popup: {
-                showAll: true,
+                showType: PulseChartPopupShow.ALWAYS,
                 width: 100,
                 fontSize: 10,
                 fontColor: 'white'
@@ -1379,7 +1391,7 @@ module powerbi.visuals.samples {
             if (data &&
                 data.settings &&
                 data.settings.popup &&
-                data.settings.popup.showAll) {
+                data.settings.popup.showType == PulseChartPopupShow.ALWAYS) {
                 return true;
             }
 
@@ -1683,10 +1695,10 @@ module powerbi.visuals.samples {
         }
 
         private getPopupSettings(objects: DataViewObjects): PulseChartPopup {
-            var showAll = DataViewObjects.getValue<boolean>(
+            var showType = DataViewObjects.getValue<string>(
                 objects,
-                PulseChart.Properties["popup"]["showAll"],
-                PulseChart.DefaultSettings.popup.showAll);
+                PulseChart.Properties["popup"]["showType"],
+                PulseChart.DefaultSettings.popup.showType);
 
             var width = DataViewObjects.getValue<number>(
                 objects,
@@ -1708,7 +1720,7 @@ module powerbi.visuals.samples {
             var fontColor = colorHelper.getColorForMeasure(objects, "");
 
             return {
-                showAll,
+                showType,
                 width,
                 fontSize,
                 fontColor
@@ -1823,7 +1835,7 @@ module powerbi.visuals.samples {
                 displayName: "popup",
                 selector: null,
                 properties: {
-                    showAll: popupSettings.showAll,
+                    showType: popupSettings.showType,
                     width: popupSettings.width,
                     fontColor: popupSettings.fontColor,
                     fontSize: popupSettings.fontSize    
