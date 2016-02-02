@@ -24,7 +24,7 @@
 *  THE SOFTWARE.
 */
  
-// - /// <reference path="../../_references.ts"/>
+// /// <reference path="../../_references.ts"/>
  
 module powerbi.visuals.samples {
     import SelectionManager = utility.SelectionManager;
@@ -840,7 +840,7 @@ module powerbi.visuals.samples {
             this.selectionManager = new SelectionManager({ hostServices: options.host });
             var svg: D3.Selection = this.svg = d3.select(options.element.get(0))
                 .append('svg')
-                .attr('class', 'pulseChart');
+                .classed('pulseChart', true);
 
             this.gaps = svg.append('g').classed(PulseChart.Gaps.class, true);
             this.chart = svg.append('g').attr('class', PulseChart.Chart.class);
@@ -1650,7 +1650,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                    .attr("fill", this.data.settings.popup.fontColor)
+                    .style("fill", this.data.settings.popup.fontColor)
                     .attr("x", (d: PulseChartDataPoint) => {
                           return width - PulseChart.DefaultTooltipSettings.timeWidth;
                       })
@@ -1669,7 +1669,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                    .attr("fill", this.data.settings.popup.fontColor)
+                    .style("fill", this.data.settings.popup.fontColor)
                      //.attr("stroke", "white")
                      .attr("x", (d: PulseChartDataPoint) => {
                           return 0;
@@ -1701,7 +1701,7 @@ module powerbi.visuals.samples {
                     "font-family": "sans-serif",
                     "font-size": textFontSize
                 })
-                .attr("fill", this.data.settings.popup.fontColor)
+                .style("fill", this.data.settings.popup.fontColor)
                 .attr("x", (d: PulseChartDataPoint) => {
                     return 0;
                 })
