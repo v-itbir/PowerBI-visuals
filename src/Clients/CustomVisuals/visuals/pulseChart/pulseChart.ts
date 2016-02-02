@@ -514,6 +514,7 @@ module powerbi.visuals.samples {
         private static GapNode: ClassAndSelector = createClassAndSelector("gapNode");
         private static TooltipLine: ClassAndSelector = createClassAndSelector('tooltipLine');
         private static TooltipTime: ClassAndSelector = createClassAndSelector('tooltipTime');
+        private static TooltipTimeRect: ClassAndSelector = createClassAndSelector('tooltipTimeRect');
         private static TooltipTitle: ClassAndSelector = createClassAndSelector('tooltipTitle');
         private static TooltipDescription: ClassAndSelector = createClassAndSelector('tooltipDescription');
 
@@ -1508,6 +1509,10 @@ module powerbi.visuals.samples {
             
             var durationTooltip: number = 1000;
             var durationLine: number = 700;
+
+            var tooltipShiftY = (y: number) => {
+                return (y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
+            }
                
             var selection: D3.UpdateSelection = rootSelection.selectAll(node.selector).data(d => { 
                 return _.filter(d.data, (value: PulseChartDataPoint) => {
@@ -1522,7 +1527,7 @@ module powerbi.visuals.samples {
             selection
                     .attr("transform", (d: PulseChartDataPoint) => {                        
                         var x: number = xScale(isScalar ? d.categoryValue : d.categoryIndex) - width/2;
-                        var y: number = (d.y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
+                        var y: number = tooltipShiftY(d.y);
                         return SVGUtil.translate(x, y);
                     })
                     .style("opacity", 0)
@@ -1531,11 +1536,10 @@ module powerbi.visuals.samples {
                     .style("opacity", 1);
                
                 
-            var tooltipRoot = selection
-                    .selectAll(PulseChart.TooltipRect.selector)
-                    .data(d => [d]).enter()
-
-            var tooltip = tooltipRoot.append("path")
+            var tooltip = selection
+                .selectAll(PulseChart.TooltipRect.selector)
+                .data(d => [d]);
+            tooltip.enter().append("path")
             tooltip           
                         .classed(PulseChart.TooltipRect.class, true)
                         .attr("display", (d: PulseChartDataPoint) => {
@@ -1563,11 +1567,15 @@ module powerbi.visuals.samples {
                                 ];
 
                             return line(path);
-                          })
+                          });
+                          /*
                         .style('stroke', "white")
-                        .style('stroke-width', "1px");
+                        .style('stroke-width', "1px");*/
 
-            var tooltipTriangle = tooltipRoot.append("path")
+            var tooltipTriangle = selection
+                .selectAll(PulseChart.TooltipTriangle.selector)
+                .data(d => [d]);
+            tooltipTriangle.enter().append("path")
             tooltipTriangle         
                         .classed(PulseChart.TooltipTriangle.class, true)
                         .style('fill', this.data.settings.popup.color)
@@ -1591,8 +1599,11 @@ module powerbi.visuals.samples {
                           })                
                         .style('stroke-width', "1px");   
                         
-                        //yScale(d.y),
-            var tooltipLine = tooltipRoot.append("path")
+            var tooltipLine = selection
+                .selectAll(PulseChart.TooltipLine.selector)
+                .data(d => [d]);
+            tooltipLine.enter().append("path")
+
             tooltipLine
                         .classed(PulseChart.TooltipLine.class, true)
                         .style('fill', this.data.settings.popup.color)
@@ -1602,11 +1613,11 @@ module powerbi.visuals.samples {
                             var path = [
                                 { 
                                   "x": width/2,
-                                  "y": (d.y > 0) ? (-1 * marginTop) + topShift + yScale(d.y) : 0 - yScale(d.y), //start
+                                  "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y), //start
                                 },
                                 { 
                                   "x": width/2,
-                                  "y": (d.y > 0) ? (-1 * marginTop) + topShift + yScale(d.y) : 0 - yScale(d.y),
+                                  "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
                                 }];
                             return line(path);
                           })
@@ -1616,7 +1627,7 @@ module powerbi.visuals.samples {
                             var path = [
                                 { 
                                   "x": width/2,
-                                  "y": (d.y > 0) ? (-1 * marginTop) + topShift + yScale(d.y) : 0 - yScale(d.y),
+                                  "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
                                 },
                                 { 
                                   "x": width/2,
@@ -1625,9 +1636,12 @@ module powerbi.visuals.samples {
                             return line(path);
                           });
 
-            var timeRect = tooltipRoot.append("path")
-            timeRect           
-                        .classed(PulseChart.TooltipRect.class, true)
+            var timeRect = selection
+                .selectAll(PulseChart.TooltipTimeRect.selector)
+                .data(d => [d]);
+            timeRect.enter().append("path")
+            timeRect
+                        .classed(PulseChart.TooltipTimeRect.class, true)
                         .style('fill', "#010101")
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
@@ -1652,8 +1666,11 @@ module powerbi.visuals.samples {
                             return line(path);
                           });
 
-            var time = tooltipRoot.append("text")
-            time 
+            var time = selection
+                .selectAll(PulseChart.TooltipTime.selector)
+                .data(d => [d]);
+            time.enter().append("text")
+            time
                      .classed(PulseChart.TooltipTime.class, true)
                      .style({
                          "font-family": "sans-serif",
@@ -1671,8 +1688,11 @@ module powerbi.visuals.samples {
                          return d.popupInfo.time;
                      });
                      
-            var title = tooltipRoot.append("text")
-            title 
+            var title = selection
+                .selectAll(PulseChart.TooltipTitle.selector)
+                .data(d => [d]);
+            title.enter().append("text")
+            title
                      .classed(PulseChart.TooltipTitle.class, true)
                      .style({
                          "font-family": "sans-serif",
@@ -1704,7 +1724,10 @@ module powerbi.visuals.samples {
             
             var textFontSize = `${this.data.settings.popup.fontSize}px`;
 
-            var description = tooltipRoot.append("text");
+            var description = selection
+                .selectAll(PulseChart.TooltipDescription.selector)
+                .data(d => [d]);
+            description.enter().append("text")
             description
                 .classed(PulseChart.TooltipDescription.class, true)
                 .style({
