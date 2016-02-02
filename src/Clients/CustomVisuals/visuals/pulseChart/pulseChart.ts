@@ -44,7 +44,7 @@ module powerbi.visuals.samples {
     }
 
     export interface TooltipSettings {
-        backgroundColor: string;
+        dataPointColor: string;
         marginTop: number;
         height: number;
         timeWidth: number;
@@ -84,6 +84,7 @@ module powerbi.visuals.samples {
     export interface PulseChartPopup {
         showType: string;
         width: number;
+        color: string
         fontSize: number;
         fontColor: string
     }
@@ -300,6 +301,10 @@ module powerbi.visuals.samples {
                                 numeric: true
                             }
                         },
+                        color: {
+                            displayName: data.createDisplayNameGetter('Visual_Fill'),
+                            type: { fill: { solid: { color: true } } }
+                        },
                         fontSize: {
                             displayName: "Text size",
                             type: { formatting: { fontSize: true } }
@@ -376,6 +381,10 @@ module powerbi.visuals.samples {
                     objectName: "popup",
                     propertyName: "width"
                 },
+                color: {
+                    objectName: "popup",
+                    propertyName: "color"
+                },
                 fontSize: {
                     objectName: "popup",
                     propertyName: "fontSize"
@@ -416,6 +425,7 @@ module powerbi.visuals.samples {
             popup: {
                 showType: PulseChartPopupShow.ALWAYS,
                 width: 100,
+                color: "#808181",
                 fontSize: 10,
                 fontColor: 'white'
             },
@@ -474,7 +484,7 @@ module powerbi.visuals.samples {
         };
 
         private static DefaultTooltipSettings: TooltipSettings = {
-            backgroundColor: "#808181",
+            dataPointColor: "#808181",
             marginTop: 20,
             height: 64,
             timeWidth: 35,
@@ -1344,7 +1354,7 @@ module powerbi.visuals.samples {
                 })
                 .attr("cy", (d: PulseChartDataPoint) => yScale(d.y))
                 .attr("r", 5)
-                .style("fill", PulseChart.DefaultTooltipSettings.backgroundColor)
+                .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
                 .style("cursor", "pointer")
                 .on("mouseover", function(d) {
                     d3.select(this)
@@ -1353,7 +1363,7 @@ module powerbi.visuals.samples {
                 })
                 .on("mouseout", function(d) {
                     d3.select(this)
-                        .style("fill", PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
                         .attr("r", 5);
                 });
 
@@ -1531,7 +1541,7 @@ module powerbi.visuals.samples {
                         .attr("display", (d: PulseChartDataPoint) => {
                             return (d.popupInfo) ? "inherit" : "none";
                         })
-                        .style('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('fill', this.data.settings.popup.color)
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
                                 { 
@@ -1560,7 +1570,7 @@ module powerbi.visuals.samples {
             var tooltipTriangle = tooltipRoot.append("path")
             tooltipTriangle         
                         .classed(PulseChart.TooltipTriangle.class, true)
-                        .style('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('fill', this.data.settings.popup.color)
                         .attr('d', (d: PulseChartDataPoint) => {
                             var path = [
                                 {
@@ -1585,8 +1595,8 @@ module powerbi.visuals.samples {
             var tooltipLine = tooltipRoot.append("path")
             tooltipLine
                         .classed(PulseChart.TooltipLine.class, true)
-                        .style('fill', PulseChart.DefaultTooltipSettings.backgroundColor)
-                        .style('stroke', PulseChart.DefaultTooltipSettings.backgroundColor)
+                        .style('fill', this.data.settings.popup.color)
+                        .style('stroke', this.data.settings.popup.color)
                         .style('stroke-width', "1px")
                         .attr('d', (d: PulseChartDataPoint) => { 
                             var path = [
@@ -1650,7 +1660,7 @@ module powerbi.visuals.samples {
                          "font-weight": "bold",
                          "font-size": "12px"
                       })
-                    .style("fill", this.data.settings.popup.fontColor)
+                    .style("fill", "white")
                     .attr("x", (d: PulseChartDataPoint) => {
                           return width - PulseChart.DefaultTooltipSettings.timeWidth;
                       })
@@ -1780,21 +1790,29 @@ module powerbi.visuals.samples {
 
             width = Math.max(0, width);
 
+            var colorHelper = new ColorHelper(
+                this.colors,
+                PulseChart.Properties["popup"]["color"],
+                PulseChart.DefaultSettings.popup.color);
+
+            var color = colorHelper.getColorForMeasure(objects, "");
+
             var fontSize = DataViewObjects.getValue<number>(
                 objects,
                 PulseChart.Properties["popup"]["fontSize"],
                 PulseChart.DefaultSettings.popup.fontSize);
 
-            var colorHelper = new ColorHelper(
+            var fontColorHelper = new ColorHelper(
                 this.colors,
                 PulseChart.Properties["popup"]["fontColor"],
                 PulseChart.DefaultSettings.popup.fontColor);
 
-            var fontColor = colorHelper.getColorForMeasure(objects, "");
+            var fontColor = fontColorHelper.getColorForMeasure(objects, "");
 
             return {
                 showType,
                 width,
+                color,
                 fontSize,
                 fontColor
             };
@@ -1910,6 +1928,7 @@ module powerbi.visuals.samples {
                 properties: {
                     showType: popupSettings.showType,
                     width: popupSettings.width,
+                    color: popupSettings.color,
                     fontColor: popupSettings.fontColor,
                     fontSize: popupSettings.fontSize    
                 }
