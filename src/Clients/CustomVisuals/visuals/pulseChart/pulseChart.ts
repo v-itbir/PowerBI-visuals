@@ -1246,7 +1246,7 @@ module powerbi.visuals.samples {
 
             this.animationPlay
                 .attr("d", line(playCoords))
-                .attr("fill", "green")
+                .style("fill", "green")
                 .on("click", () => {
                     this.clearChart();
                     this.renderChart(data, 10000);
