@@ -23,9 +23,9 @@
 *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 *  THE SOFTWARE.
 */
- 
-//// <reference path="../../_references.ts"/>
- 
+
+// /// <reference path="../../_references.ts"/>
+
 module powerbi.visuals.samples {
     import SelectionManager = utility.SelectionManager;
     import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
@@ -189,14 +189,14 @@ module powerbi.visuals.samples {
                     kind: powerbi.VisualDataRoleKind.Grouping,
                 },
                 {
-                    displayName: PulseChart.RoleNames.Category,
-                    name: PulseChart.RoleNames.Category,
-                    kind: powerbi.VisualDataRoleKind.Grouping,
-                },
-                {
                     displayName: PulseChart.RoleNames.Value,
                     name: PulseChart.RoleNames.Value,
                     kind: powerbi.VisualDataRoleKind.Measure,
+                },
+                {
+                    displayName: PulseChart.RoleNames.Category,
+                    name: PulseChart.RoleNames.Category,
+                    kind: powerbi.VisualDataRoleKind.Grouping,
                 },
                 {
                     displayName: PulseChart.RoleNames.EventTitle,
@@ -212,31 +212,30 @@ module powerbi.visuals.samples {
             dataViewMappings: [{
                 conditions: [
                     {
-                        'Timestamp': { min: 0, max: 1 },
+                        'Timestamp': { min: 1, max: 1 },
+                        'Value': { max: 0 },
                         'Category': { max: 0 },
-                        'Value': { max: 0 },
                         'EventTitle': { max: 0 },
                         'EventDescription': { max: 0 },
                     },
                     {
                         'Timestamp': { min: 1, max: 1 },
-                        'Category': { min: 1, max: 1 },
-                        'Value': { max: 0 },
-                        'EventTitle': { max: 0 },
-                        'EventDescription': { max: 0 },
-                    },
-                    {
-                        'Timestamp': { min: 1, max: 1 },
-                        'Category': { min: 1, max: 1 },
                         'Value': { min: 1, max: 1 },
+                        'Category': { max: 0 },
+                        'EventTitle': { max: 0 },
+                        'EventDescription': { max: 0 },
+                    },
+                    {
+                        'Timestamp': { min: 1, max: 1 },
+                        'Value': { min: 1, max: 1 },
+                        'Category': { max: 1 },
                         'EventTitle': { max: 1 },
-                        'EventDescription': { max:1 },
+                        'EventDescription': { max: 1 },
                     }
                 ],
                 categorical: {
                     categories: {
-                        for: { in: PulseChart.RoleNames.Timestamp },
-                        dataReductionAlgorithm: { top: {} }
+                        for: { in: PulseChart.RoleNames.Timestamp }
                     },
                     values: {
                         group: {
@@ -494,6 +493,8 @@ module powerbi.visuals.samples {
 
         private isFirstTime: boolean = true;
 
+        private yDomain: number[] = [];
+
         private selectionManager: SelectionManager;
         private animator: IGenericAnimator;
         private behavior: IInteractiveBehavior;
@@ -747,7 +748,7 @@ module powerbi.visuals.samples {
                     
                     if (y0 === null) {
                         y0_group = grouped[1].values[valueMeasureIndex];
-                        y0 = -1 * y0_group.values[categoryIndex];
+                        y0 = y0_group.values[categoryIndex];
                     }
                     
                     //console.log('y0', y0);
@@ -865,7 +866,6 @@ module powerbi.visuals.samples {
         }
 
         private static isGap(newValue, oldValue, isDate) {
-            //console.log('newValue', newValue, 'oldValue', oldValue);
             if (!newValue ||
                 !oldValue) {
                     return false;
@@ -891,10 +891,8 @@ module powerbi.visuals.samples {
             this.xAxis = svg.append('g').attr('class', 'x axis');
             this.yAxis = svg.append('g').attr('class', 'y axis');
 
-
             this.animationPlay = svg.append('g').classed(PulseChart.AnimationPlay.class, true).append("path");
             this.animationPause = svg.append('g').classed(PulseChart.AnimationPause.class, true).append("path");
-
 
             var style: IVisualStyle = options.style;
 
@@ -904,31 +902,27 @@ module powerbi.visuals.samples {
         }
 
         public update(options: VisualUpdateOptions): void {
-            if (!options.dataViews || !options.dataViews[0]) {
-                return;
-            }
-
-            this.updateInternal(options);
-        }
-
-        public updateInternal(options: VisualUpdateOptions): void {
-            var dataView: DataView = options.dataViews[0];
-            if (!dataView ||
-                !dataView.categorical ||
-                !dataView.categorical.values ||
-                !dataView.categorical.values[0] ||
-                !dataView.categorical.values[0].values) {
+            if (!options ||
+                !options.dataViews ||
+                !options.dataViews[0] ||
+                !options.dataViews[0].categorical ||
+                !options.dataViews[0].categorical.values ||
+                !options.dataViews[0].categorical.values[0] ||
+                !options.dataViews[0].categorical.values[0].values) {
+                    this.clear();
                     return;
             }
 
-            var categoryType: ValueType = ValueType.fromDescriptor({ text: true });
-            var axisType = PulseChart.Properties["general"]["formatString"];
-            var isScalar: boolean =  CartesianChart.getIsScalar(dataView.metadata ? dataView.metadata.objects : null, axisType, categoryType);
+            var dataView: DataView = options.dataViews[0],
+                categoryType: ValueType = ValueType.fromDescriptor({ text: true }),
+                axisType = PulseChart.Properties["general"]["formatString"],
+                isScalar: boolean =  CartesianChart.getIsScalar(dataView.metadata ? dataView.metadata.objects : null, axisType, categoryType);
 
             this.setSize(options.viewport); 
-            var data: PulseChartData = this.data = this.converter(dataView, isScalar);
-            //console.log('data:', data);
-            if (!data) {
+            this.data = this.converter(dataView, isScalar);
+
+            if (!this.data) {
+                this.clear();
                 return;
             }
 
@@ -941,6 +935,7 @@ module powerbi.visuals.samples {
                 (viewport.width < PulseChart.DefaultViewport.width)) {
                     return false; 
             }
+
             return true;
         }
  
@@ -1189,18 +1184,18 @@ module powerbi.visuals.samples {
             var minY0 = <number>d3.min(data,(kv) => { return d3.min(kv.data, d => { return d.y; }); });
             var maxY0 = <number>d3.max(data, (kv) => { return d3.max(kv.data, d => { return d.y; }); });
 
-            var min = Math.min(minY0, -1 * maxY0);
+            // var min = Math.min(minY0, -1 * maxY0);
             //console.log('min', min, 'min', minY0, 'max', maxY0);
-            return [min, maxY0];
+            return [Math.min(minY0, maxY0), Math.max(minY0, maxY0)];
         }
 
         private getYAxisProperties(): IAxisProperties {
-            var yDomain = PulseChart.createValueDomain(this.data.series, false);
+            this.yDomain = PulseChart.createValueDomain(this.data.series, false);
             var lowerMeasureIndex = 0;//this.data.series.length === 1 ? 0 : this.data.lowerMeasureIndex;
             var yMetaDataColumn: DataViewMetadataColumn  = this.data.series.length? this.data.series[lowerMeasureIndex].yCol : undefined;
             var yAxisProperties = AxisHelper.createAxis({
                 pixelSpan: this.viewport.height,
-                dataDomain: yDomain,
+                dataDomain: this.yDomain,
                 metaDataColumn: yMetaDataColumn,
                 //formatStringProp: PulseChart.properties.general.formatString,
                 formatString: valueFormatter.getFormatString(yMetaDataColumn, PulseChart.Properties["general"]["formatString"]),
@@ -1221,15 +1216,13 @@ module powerbi.visuals.samples {
             var data = this.data;
 
             if (!data) {
-                this.clearChart();
+                this.clear();
                 return;
             }
 
             this.renderGaps(data, duration);
             this.renderAxes(data, duration);
             this.renderChart(data, 0);
-
-
             this.renderControls(data, duration);
 
             return result;
@@ -1237,32 +1230,34 @@ module powerbi.visuals.samples {
 
 
         private renderControls(data: PulseChartData, duration: number): void {
+            this.animationPlay.style("display", null);
+            this.animationPause.style("display", null);
 
-              var playCoords = [
+            var playCoords = [
                 { x: 0, y: 0 },
                 { x: 20, y: 10 },
                 { x: 0, y: 20 }
-                ];
+            ];
 
             var line: D3.Svg.Line = d3.svg.line()
-                    .x(d => d.x)
-                    .y(d => d.y);
+                .x(d => d.x)
+                .y(d => d.y);
 
 
             this.animationPlay
-                    .attr("d", line(playCoords))
-                    .attr("fill", "green")
-                    .on("click", () => {
-                        this.clearChart();
-                        this.renderChart(data, 10000);
-                    });
+                .attr("d", line(playCoords))
+                .attr("fill", "green")
+                .on("click", () => {
+                    this.clearChart();
+                    this.renderChart(data, 10000);
+                });
 
-              var playCoords = [
+            var playCoords = [
                 { x: 30, y: 0 },
                 { x: 50, y: 0 },
                 { x: 50, y: 20 },
                 { x: 30, y: 20 }
-                ];
+            ];
                 /*
             this.animationPause
                     .attr("d", line(playCoords))
@@ -1650,14 +1645,14 @@ module powerbi.visuals.samples {
 
             var marginTop: number = PulseChart.DefaultTooltipSettings.marginTop;   
             var width: number = this.data.settings.popup.width;   
-            var height: number = PulseChart.DefaultTooltipSettings.height;   
+            var height: number = PulseChart.DefaultTooltipSettings.height;
 
             var topShift: number = 20; 
 
             var durationTooltip: number = 1000;
             var durationLine: number = 700;
 
-            var tooltipShiftY = (y: number) => (y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
+            var tooltipShiftY = (y: number) => this.isHigherMiddle(y) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
 
             var tooltipRoot: D3.UpdateSelection = rootSelection.selectAll(node.selector)
                 .data(d => _.filter(d.data, (value: PulseChartDataPoint) => this.isPopupShow(value, selectionIds)));
@@ -1684,19 +1679,19 @@ module powerbi.visuals.samples {
                     var path = [
                         { 
                             "x": -2,
-                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * marginTop) : 0,
                         },
                         { 
                             "x": -2,
-                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * (marginTop + height)) : height,
                         },
                         { 
-                            "x": width-2,
-                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : height,
+                            "x": width - 2,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * (marginTop + height)) : height,
                         },
                         {
-                            "x": width-2,
-                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                            "x": width - 2,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * marginTop) : 0,
                         }
                     ];
                     return line(path);
@@ -1712,20 +1707,20 @@ module powerbi.visuals.samples {
                 .attr('d', (d: PulseChartDataPoint) => {
                     var path = [
                         {
-                            "x": width/2 - 5,
-                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                            "x": width / 2 - 5,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * marginTop) : 0,
                         },
                         {
-                            "x": width/2,
-                            "y": (d.y > 0) ? (-1 * (marginTop - 5)) : -5,
+                            "x": width / 2,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * (marginTop - 5)) : -5,
                         },
                         {
-                            "x": width/2 + 5,
-                            "y": (d.y > 0) ? (-1 * marginTop) : 0,
+                            "x": width / 2 + 5,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * marginTop) : 0,
                         },
                     ];
                     return line(path);
-                })                
+                })
                 .style('stroke-width', "1px");    
                         
             var tooltipLine = tooltipRoot.selectAll(PulseChart.TooltipLine.selector).data(d => [d]);
@@ -1738,11 +1733,11 @@ module powerbi.visuals.samples {
                     var path = [
                         { 
                             "x": width/2,
-                            "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y), //start
+                            "y": this.isHigherMiddle(d.y) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y), //start
                         },
                         { 
                             "x": width/2,
-                            "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
+                            "y": this.isHigherMiddle(d.y) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
                         }];
                     return line(path);
                 })
@@ -1752,11 +1747,11 @@ module powerbi.visuals.samples {
                     var path = [
                         { 
                             "x": width/2,
-                            "y": (d.y > 0) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
+                            "y": this.isHigherMiddle(d.y) ? yScale(d.y) + tooltipShiftY(d.y) : yScale(d.y) - tooltipShiftY(d.y),
                         },
                         { 
                             "x": width/2,
-                            "y": (d.y > 0) ? (-1 * marginTop) : 0, //end
+                            "y": this.isHigherMiddle(d.y) ? (-1 * marginTop) : 0, //end
                         }];
                     return line(path);
                 });
@@ -1771,19 +1766,23 @@ module powerbi.visuals.samples {
                     var path = [
                         { 
                             "x": width - PulseChart.DefaultTooltipSettings.timeWidth - 2,
-                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : 0,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * (marginTop + height)) : 0,
                         },
                         { 
                             "x": width - PulseChart.DefaultTooltipSettings.timeWidth  -2,
-                            "y": (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight)) : PulseChart.DefaultTooltipSettings.timeHeight,
+                            "y": this.isHigherMiddle(d.y)
+                                ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight))
+                                : PulseChart.DefaultTooltipSettings.timeHeight,
                         },
                         { 
-                            "x": width-2,
-                            "y": (d.y > 0) ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight)) : PulseChart.DefaultTooltipSettings.timeHeight,
+                            "x": width - 2,
+                            "y": this.isHigherMiddle(d.y)
+                                ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight))
+                                : PulseChart.DefaultTooltipSettings.timeHeight,
                         },
                         { 
-                            "x": width-2,
-                            "y": (d.y > 0) ? (-1 * (marginTop + height)) : 0,
+                            "x": width - 2,
+                            "y": this.isHigherMiddle(d.y) ? (-1 * (marginTop + height)) : 0,
                         }
                     ];
                     return line(path);
@@ -1800,7 +1799,7 @@ module powerbi.visuals.samples {
                 .style(timeDisplayStyle)
                 .style("fill", this.data.settings.popup.timeColor)
                 .attr("x", (d: PulseChartDataPoint) => width - PulseChart.DefaultTooltipSettings.timeWidth)
-                .attr("y", (d: PulseChartDataPoint) => (d.y > 0) 
+                .attr("y", (d: PulseChartDataPoint) => this.isHigherMiddle(d.y) 
                     ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight  + 3)) 
                     : PulseChart.DefaultTooltipSettings.timeHeight - 3)
                 .text((d: PulseChartDataPoint) => d.popupInfo.time);
@@ -1816,7 +1815,7 @@ module powerbi.visuals.samples {
                 .style("fill", this.data.settings.popup.fontColor)
                 //.attr("stroke", "white")
                 .attr("x", (d: PulseChartDataPoint) => 0)
-                .attr("y", (d: PulseChartDataPoint) => (d.y > 0) ? (-1 * (marginTop + height - 12)) : 12)
+                .attr("y", (d: PulseChartDataPoint) => this.isHigherMiddle(d.y) ? (-1 * (marginTop + height - 12)) : 12)
                 .text((d: PulseChartDataPoint) => {
                     if (!d.popupInfo) {
                         return "";
@@ -1847,9 +1846,23 @@ module powerbi.visuals.samples {
                 .call(d => d.forEach(x => x[0] && 
                     powerbi.TextMeasurementService.wordBreak(x[0], width - 2, height - 26)))
                 .attr("x", (d: PulseChartDataPoint) => 0)
-                .attr("y", (d: PulseChartDataPoint) => ((d.y > 0) ? -marginTop - height : 0) + 26)
-                
-            tooltipRoot.exit().remove();
+                .attr("y", (d: PulseChartDataPoint) => this.isHigherMiddle(d.y) ? (-1 * (marginTop + height - 26)) : 26)
+
+            tooltipRoot
+                .exit()
+                .remove();
+        }
+
+
+        private isHigherMiddle(value: number): boolean {
+            var minValue: number = d3.min(this.yDomain),
+                middleValue = Math.abs((d3.max(this.yDomain) - minValue) / 2) ;
+
+            middleValue = middleValue === 0
+                ? middleValue
+                : minValue + middleValue;
+
+            return value >= middleValue;
         }
 
         private static getObjectsFromDataView(dataView: DataView): DataViewObjects {
@@ -2000,13 +2013,17 @@ module powerbi.visuals.samples {
             return playbackSettings;
         }
 
-        private clearChart(): void {
+        private clear(): void {
+            this.clearChart();
+            this.gaps.selectAll(PulseChart.Gap.selector).remove();
+            this.xAxis.selectAll(PulseChart.AxisNode.selector).remove();
+            this.animationPlay.style("display", "none");
+            this.animationPause.style("display", "none");
+        }
 
+        private clearChart(): void {
            this.chart.selectAll(PulseChart.LineNode.selector).remove();
            this.chart.selectAll(PulseChart.Dot.selector).remove();
-        //    this.chart.selectAll('*').remove();
-          //  this.axisY.selectAll('*').remove();
-            //this.xAxis.selectAll('*').remove();
         }
 
         public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {
