@@ -87,6 +87,7 @@ module powerbi.visuals.samples {
         color: string
         fontSize: number;
         fontColor: string;
+        showTime: boolean;
         timeColor: string;
         timeFill: string;
     }
@@ -315,6 +316,10 @@ module powerbi.visuals.samples {
                             displayName: "Text color",
                             type: { fill: { solid: { color: true } } }
                         },
+                        showTime: {
+                            displayName: 'Show time',
+                            type: { bool: true }
+                        },
                         timeColor: {
                             displayName: "Time color",
                             type: { fill: { solid: { color: true } } }
@@ -403,6 +408,10 @@ module powerbi.visuals.samples {
                     objectName: "popup",
                     propertyName: "fontColor"
                 },
+                showTime: { 
+                    objectName: 'popup', 
+                    propertyName: 'showTime' 
+                },
                 timeColor: {
                     objectName: "popup",
                     propertyName: "timeColor"
@@ -410,7 +419,7 @@ module powerbi.visuals.samples {
                 timeFill: {
                     objectName: "popup",
                     propertyName: "timeFill"
-                },
+                }
             },
             xAxis: {
                 show: {
@@ -446,8 +455,9 @@ module powerbi.visuals.samples {
                 color: "#808181",
                 fontSize: 10,
                 fontColor: 'white',
+                showTime: true,
                 timeColor: 'white',
-                timeFill: '#010101'
+                timeFill: '#010101', 
             },
             series: {
                 fill: "#3779B7",
@@ -1636,9 +1646,11 @@ module powerbi.visuals.samples {
                 });
 
             var timeRect = tooltipRoot.selectAll(PulseChart.TooltipTimeRect.selector).data(d => [d]);
+            var timeDisplayStyle = { "display": this.data.settings.popup.showTime ? "" : "none" };
             timeRect.enter().append("path").classed(PulseChart.TooltipTimeRect.class, true);
             timeRect
-                .style('fill', this.data.settings.popup.timeFill)
+                .style("fill", this.data.settings.popup.timeFill)
+                .style(timeDisplayStyle)
                 .attr('d', (d: PulseChartDataPoint) => { 
                     var path = [
                         { 
@@ -1669,12 +1681,13 @@ module powerbi.visuals.samples {
                     "font-weight": "bold",
                     "font-size": "12px"
                 })
+                .style(timeDisplayStyle)
                 .style("fill", this.data.settings.popup.timeColor)
                 .attr("x", (d: PulseChartDataPoint) => width - PulseChart.DefaultTooltipSettings.timeWidth)
                 .attr("y", (d: PulseChartDataPoint) => (d.y > 0) 
                     ? (-1 * (marginTop + height - PulseChart.DefaultTooltipSettings.timeHeight  + 3)) 
                     : PulseChart.DefaultTooltipSettings.timeHeight - 3)
-                .text((d: PulseChartDataPoint) =>  d.popupInfo.time);
+                .text((d: PulseChartDataPoint) => d.popupInfo.time);
                      
             var title = tooltipRoot.selectAll(PulseChart.TooltipTitle.selector).data(d => [d]);
             title.enter().append("text").classed(PulseChart.TooltipTitle.class, true);
@@ -1700,7 +1713,7 @@ module powerbi.visuals.samples {
                     };
                                                  
                     return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties,
-                             PulseChart.DefaultTooltipSettings.titleWidth);
+                        this.data.settings.popup.showTime ? PulseChart.DefaultTooltipSettings.titleWidth : (width - 2));
                 });
             
             var textFontSize = `${this.data.settings.popup.fontSize}px`;
@@ -1718,7 +1731,7 @@ module powerbi.visuals.samples {
                 .call(d => d.forEach(x => x[0] && 
                     powerbi.TextMeasurementService.wordBreak(x[0], PulseChart.DefaultTooltipSettings.descriptionWidth, 50)))
                 .attr("x", (d: PulseChartDataPoint) => 0)
-                .attr("y", (d: PulseChartDataPoint) => (d.y > 0) ? (-1 * (marginTop + height - 26)) : 26)
+                .attr("y", (d: PulseChartDataPoint) => ((d.y > 0) ? -marginTop - height : 0) + 26)
                 
             tooltipRoot.exit().remove();
         }
@@ -1778,6 +1791,11 @@ module powerbi.visuals.samples {
 
             var fontColor = fontColorHelper.getColorForMeasure(objects, "");
 
+            var showTime =  DataViewObjects.getValue<boolean>(
+                objects,
+                PulseChart.Properties["popup"]["showTime"],
+                PulseChart.DefaultSettings.popup.showTime);
+                
             var timeColorHelper = new ColorHelper(
                 this.colors,
                 PulseChart.Properties["popup"]["timeColor"],
@@ -1798,6 +1816,7 @@ module powerbi.visuals.samples {
                 color,
                 fontSize,
                 fontColor,
+                showTime,
                 timeColor,
                 timeFill
             };
@@ -1916,6 +1935,7 @@ module powerbi.visuals.samples {
                     color: popupSettings.color,
                     fontColor: popupSettings.fontColor,
                     fontSize: popupSettings.fontSize,
+                    showTime: popupSettings.showTime,
                     timeColor: popupSettings.timeColor,
                     timeFill: popupSettings.timeFill    
                 }
