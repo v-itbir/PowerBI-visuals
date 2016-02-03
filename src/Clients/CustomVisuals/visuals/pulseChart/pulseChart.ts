@@ -1254,7 +1254,7 @@ module powerbi.visuals.samples {
                     .attr("fill", "green")
                     .on("click", () => {
                         this.clearChart();
-                        this.renderChart(data, 3000);
+                        this.renderChart(data, 10000);
                     });
 
               var playCoords = [
@@ -1418,23 +1418,35 @@ module powerbi.visuals.samples {
                     'stroke-width': (d: PulseChartSeries) => `${d.width}px`
                 })
 
-
-             function getInterpolation(d: PulseChartSeries) {
+             var last_identity = null;
+                
+             var getInterpolation = (d: PulseChartSeries) => {
 
               var interpolate = d3.scale.quantile()
                   .domain([0,1])
                   .range(d3.range(1, d.data.length + 1));
 
-              return function(t) {
+               return (t) => {
                   if (t > 0.5) {
                    //  selection.transition().duration( 0 );
                   }
                   var index = interpolate(t);
+                 // console.log('is_tooltip', index, d.data[index].);
                   if (index && d.data[index]){
-                      var is_tooltip = d.data[index].tooltipInfo;
+                      var is_tooltip = d.data[index].popupInfo;
+                      var identity = d.data[index].identity;
 
-                      if (is_tooltip) {
-                           console.log('is_tooltip', is_tooltip, t, interpolate(t));
+                      if (is_tooltip && last_identity != identity ) {
+                           last_identity = identity;
+                           
+                           
+                           sm.select(d.data[index].identity)
+                                .then((selectionIds: SelectionId[]) => {
+                                  
+                                    this.setSelection(rootSelection, selectionIds);
+                                 
+                                });
+                           //setTimeout(5000);
                       }
                   }
 
@@ -1444,13 +1456,11 @@ module powerbi.visuals.samples {
                   }
               }
 
-           // console.log('start play', seriesCount);
            if (duration > 0) {
                selection
                 .transition()
                 .duration(duration)
                 .attrTween('d', d => getInterpolation(d)).each("end", () => {
-                  //console.log('end play', seriesCount);
 
                   seriesCount++;
                   if (seriesCount < data.series.length) {
