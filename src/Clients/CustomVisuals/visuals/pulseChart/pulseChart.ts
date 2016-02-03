@@ -49,8 +49,6 @@ module powerbi.visuals.samples {
         height: number;
         timeWidth: number;
         timeHeight: number;
-        titleWidth: number;
-        descriptionWidth: number;
     }
 
     export interface PulseChartSeries extends LineChartSeries {
@@ -519,8 +517,6 @@ module powerbi.visuals.samples {
             height: 64,
             timeWidth: 35,
             timeHeight: 15,
-            titleWidth: 60,
-            descriptionWidth: 96
         }
 
         private static MinInterval = 60 * 1000;
@@ -1534,21 +1530,21 @@ module powerbi.visuals.samples {
             var marginTop: number = PulseChart.DefaultTooltipSettings.marginTop;   
             var width: number = this.data.settings.popup.width;   
             var height: number = PulseChart.DefaultTooltipSettings.height;   
-            
+
             var topShift: number = 20; 
-            
+
             var durationTooltip: number = 1000;
             var durationLine: number = 700;
 
             var tooltipShiftY = (y: number) => (y > 0) ? (-1 * marginTop + topShift) : this.viewport.height + marginTop;
-               
+
             var tooltipRoot: D3.UpdateSelection = rootSelection.selectAll(node.selector)
                 .data(d => _.filter(d.data, (value: PulseChartDataPoint) => this.isPopupShow(value, selectionIds)));
 
             tooltipRoot.enter().append("g").classed(node.class, true);
-           
+
             tooltipRoot
-                .attr("transform", (d: PulseChartDataPoint) => {                        
+                .attr("transform", (d: PulseChartDataPoint) => {
                     var x: number = xScale(isScalar ? d.categoryValue : d.categoryIndex) - width/2;
                     var y: number = tooltipShiftY(d.y);
                     return SVGUtil.translate(x, y);
@@ -1557,8 +1553,7 @@ module powerbi.visuals.samples {
                 .transition()
                 .duration(durationTooltip)
                 .style("opacity", 1);
-               
-                
+
             var tooltipRect = tooltipRoot.selectAll(PulseChart.TooltipRect.selector).data(d => [d]);
             tooltipRect.enter().append("path").classed(PulseChart.TooltipRect.class, true);
             tooltipRect           
@@ -1712,8 +1707,8 @@ module powerbi.visuals.samples {
                         fontSize: "12px"
                     };
                                                  
-                    return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties,
-                        this.data.settings.popup.showTime ? PulseChart.DefaultTooltipSettings.titleWidth : (width - 2));
+                    return powerbi.TextMeasurementService.getTailoredTextOrDefault(textProperties, 
+                        width - 2 - (this.data.settings.popup.showTime ? PulseChart.DefaultTooltipSettings.timeWidth : 0));
                 });
             
             var textFontSize = `${this.data.settings.popup.fontSize}px`;
@@ -1729,7 +1724,7 @@ module powerbi.visuals.samples {
                 .attr("y", (d: PulseChartDataPoint) => 0)
                 .text((d: PulseChartDataPoint) => d.popupInfo && d.popupInfo.description)
                 .call(d => d.forEach(x => x[0] && 
-                    powerbi.TextMeasurementService.wordBreak(x[0], PulseChart.DefaultTooltipSettings.descriptionWidth, 50)))
+                    powerbi.TextMeasurementService.wordBreak(x[0], width - 2, height - 26)))
                 .attr("x", (d: PulseChartDataPoint) => 0)
                 .attr("y", (d: PulseChartDataPoint) => ((d.y > 0) ? -marginTop - height : 0) + 26)
                 
