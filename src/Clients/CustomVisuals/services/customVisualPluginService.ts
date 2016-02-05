@@ -124,6 +124,9 @@ module powerbi.visuals.visualPluginFactory {
                 //seriesLabelFormattingEnabled: seriesLabelFormattingEnabled,
             }));
 
+            // Pulse Chart
+            createPlugin(this.customVisualPlugins, powerbi.visuals.plugins.pulseChart, () => new samples.PulseChart());
+
         }
     }
 

@@ -145,4 +145,11 @@ module powerbi.visuals.plugins {
         customizeQuery: ColumnChart.customizeQuery,
         getSortableRoles: (visualSortableOptions?: VisualSortableOptions) => ColumnChart.getSortableRoles(visualSortableOptions),
     };
+    
+     export let pulseChart: IVisualPlugin = {
+         name: 'pulseChart',
+         watermarkKey: 'pulseChart',
+         capabilities: samples.PulseChart.capabilities,
+         create: () => new samples.PulseChart(),
+     };
 }
