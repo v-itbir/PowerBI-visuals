@@ -486,6 +486,8 @@ module powerbi.visuals.samples {
         private yAxis: D3.Selection;
         private gaps: D3.Selection;
 
+        private animationDot: D3.Selection;
+
         private lineX: D3.Svg.Line;
 
         private data: PulseChartData;
@@ -548,6 +550,8 @@ module powerbi.visuals.samples {
         private static TooltipTimeRect: ClassAndSelector = createClassAndSelector('tooltipTimeRect');
         private static TooltipTitle: ClassAndSelector = createClassAndSelector('tooltipTitle');
         private static TooltipDescription: ClassAndSelector = createClassAndSelector('tooltipDescription');
+
+        private static AnimationDot: ClassAndSelector = createClassAndSelector('animationDot');
 
         private animationIndex: number = 0;
         private animationSeries: number = 0;
@@ -900,6 +904,7 @@ module powerbi.visuals.samples {
             this.chart = svg.append('g').attr('class', PulseChart.Chart.class);
             this.xAxis = svg.append('g').attr('class', 'x axis');
             this.yAxis = svg.append('g').attr('class', 'y axis');
+            this.animationDot = this.chart.append('circle').classed(PulseChart.AnimationDot.class, true).attr('display', 'none');;
 
             this.animationHandler = new PulseChartAnimator(this, svg);
 
@@ -1049,7 +1054,10 @@ module powerbi.visuals.samples {
                 categoryDataType: ValueType = AxisHelper.getCategoryValueType(data.categoryMetadata),
                 xDomain: number[] = PulseChart.createDomain(data.series, categoryDataType, data.isScalar, [data.categories[0], data.categories[data.categories.length - 1]]),
                 xMetaDataColumn: DataViewMetadataColumn = data.categoryMetadata,
+                isScalar: boolean = data.isScalar,
                 formatString: string = valueFormatter.getFormatString(xMetaDataColumn, PulseChart.Properties["general"]["formatString"]);
+
+            var dw = new PulseDataWrapper(data, isScalar);
 
             var properties = AxisHelper.createAxis({
                 pixelSpan: this.viewport.width,
@@ -1057,11 +1065,15 @@ module powerbi.visuals.samples {
                 metaDataColumn: xMetaDataColumn,
                 formatString: formatString,
                 outerPadding: 0,
-                isScalar: this.data.isScalar,
+                isScalar: isScalar,
                 isVertical: false,
                 forcedTickCount: 0,
                 useTickIntervalForDisplayUnits: true,
-                getValueFn: (index, type) => data.categories[index],
+                getValueFn: (index, type) => {
+                    var domainIndex = xDomain.indexOf(index);
+                    var value = dw.lookupXValue(domainIndex, type);
+                    return value;
+                },//data.categories[index],
                 categoryThickness: categoryThickness,
                 isCategoryAxis: false,
                 scaleType: this.scaleType,
@@ -1336,12 +1348,20 @@ module powerbi.visuals.samples {
                 .classed(PulseChart.LineNode.class, true);
 
             if (isAnimated) {
+                this.animationDot
+                    .attr('display', 'inline')
+                    .attr("r", 5)
+                    .style("fill", this.data.settings.popup.color);
+
                 var duration: number = 5000;
                 this.drawLines(data, duration, 0);
                 //this.drawDotWithAnimation(data, duration);
+
             } else {
+                this.hideDot();
                 this.drawLines(data);
                 this.drawDots(data);
+                this.drawTooltips(data);
             }
             selection
                 .exit()
@@ -1359,7 +1379,7 @@ module powerbi.visuals.samples {
         }
 
         public stopAnimation() {
-
+            this.pauseAnimation();
             this.animationSeries = 0;
             this.clearChart();
         }
@@ -1405,21 +1425,32 @@ module powerbi.visuals.samples {
                 .remove();
         }
 
-         private findNextDataPoint(d: PulseChartDataPoint[], start: number) {
-             if (start >= d.length) {
+        private findNextDataPoint(d: PulseChartDataPoint[], start: number) {
+            if (start >= d.length) {
                  return start;
-             }
-             for (var i: number = start, iLen = d.length; i < iLen; i++) {
-                 if (d[i].popupInfo) {
-                     return i;
+            }
+            for (var i: number = start, iLen = d.length; i < iLen; i++) {
+                if (d[i] && d[i].popupInfo) {
+                    return i;
                  }
              }
              return i;
-         }
+        }
 
-        private getInterpolation(d: PulseChartSeries) {
+        private showDot() {
+            this.animationDot.attr('display', 'inline');
+        }
+
+        private hideDot() {
+            this.animationDot.attr('display', 'none');
+        }
+
+        private getInterpolation(data: PulseChartDataPoint[]) {
              var start = this.animationIndex;
-             var stop: number = this.findNextDataPoint(d.data, start);
+             var stop: number = this.findNextDataPoint(data, start);
+
+             var xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>this.data.xAxisProperties.scale;
+             var yScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>this.data.yAxisProperties.scale;
 
              console.log('start:', start, 'stop:', stop);
 
@@ -1428,39 +1459,99 @@ module powerbi.visuals.samples {
                  this.animationSeries++;
                  if (this.animationSeries >= this.data.series.length) {
                      this.animationSeries = 0;
-                     /*this.chart.selectAll(PulseChart.Line.selector).remove();*/
+                     //this.chart.selectAll(PulseChart.Line.selector).remove();
+                     this.hideDot();
                      return;
                  }
                  this.drawLines(this.data, 10000, this.animationSeries);
                  return;
              }
 
-              var interpolate = d3.scale.quantile()
-                  .domain([0,1])
-                 .range(d3.range(start, stop + 2));
+             this.showDot();
+
+              var interpolate = d3.scale.linear()
+                  .domain([0, 1])
+                 .range([start, stop + 1]);
+
+              var lineFunction: D3.Svg.Line = d3.svg.line()
+                  .x(d => d.x)
+                  .y(d => d.y)
+                  .interpolate("linear");
+
+              var interpolatedLine = data.slice(0, start).map((d: PulseChartDataPoint) => {
+                      return {x: xScale(d.x),
+                            y: yScale(d.y)};
+              });
 
               return (t) => {
-
                   var index: number = interpolate(t);
+                  var flooredX = Math.floor(index);
 
-                  if (index &&
-                        (index !== this.animationIndex) &&
-                        d.data[index] &&
-                        d.data[index].popupInfo) {
+                  if (flooredX &&
+                    (flooredX !== this.animationIndex) &&
+                    data[flooredX] &&
+                    data[flooredX].popupInfo) {
 
-                        this.handleSelection(d.data[index]);
-                  };
+                      this.handleSelection(data[flooredX]);
+                  }
 
                   this.animationIndex = index;
+
+                  if (flooredX > 0 && flooredX < data.length) {
+                        var weight = interpolate(t) - flooredX;
+                        var weightedLineAverage = yScale( data[flooredX].y) * weight +  yScale(data[flooredX - 1].y) * (1 - weight);
+                        var y = weightedLineAverage;
+
+                        var weightedLineAverageX = xScale( data[flooredX].x) * weight +  xScale(data[flooredX - 1].x) * (1 - weight);
+                        var x = weightedLineAverageX;
+
+                        interpolatedLine.push({ "x": x, "y": y });
+                        this.animationDot
+                            .attr("cx", x)
+                            .attr("cy", y);
+
+                        //console.log("x", x, "y", y);
+                  }
 
                   if (t >= 1) {
                     this.nextLineWithAnimation();
                   }
 
-                  var interpolatedLine = d.data.slice(0, index);
-                  return this.lineX(interpolatedLine);
+                  return lineFunction(interpolatedLine);
               };
          }
+
+        private drawLineWithAnimation() {
+            var selection: D3.UpdateSelection = this.animationSelection;
+            var duration: number = 5000;
+            var minSpeed: number = 500;
+            var start: number = this.animationIndex;
+
+            var durationCallback = (d: PulseChartSeries): number => {
+                var stop: number = this.findNextDataPoint(d.data, start);
+                var speed: number = duration / d.data.length;
+                if (speed < minSpeed) {
+                    speed = minSpeed;
+                }
+
+                duration = speed * (stop - start);
+                console.log('duration:', duration, 'points:', stop - start);
+                return duration;
+            };
+
+            selection
+                .transition()
+                .duration(durationCallback)
+                .ease("linear")
+                .attrTween('d', (d: PulseChartSeries) => this.getInterpolation(d.data))
+                /*.call(function(d) {
+                    console.log(arguments);
+                    return d;
+                })*/
+                .each("end", () => {
+                    console.log('end transition');
+                });
+        }
 
         private handleSelection(d: PulseChartDataPoint): void {
 
@@ -1484,62 +1575,6 @@ module powerbi.visuals.samples {
                 }, 5000);
         }
 
-        private drawLineWithAnimation() {
-            var selection: D3.UpdateSelection = this.animationSelection;
-            var duration: number = 5000;
-            var minSpeed: number = 500;
-            var start: number = this.animationIndex;
-
-            selection
-                .transition()
-                .duration((d: PulseChartSeries): number => {
-                    var stop: number = this.findNextDataPoint(d.data, start);
-                    var speed: number = duration / d.data.length;
-                    if (speed < minSpeed) {
-                        speed = minSpeed;
-                    }
-
-                    duration = speed * (stop - start);
-                    console.log('duration:', duration, 'points:', stop - start);
-                    return duration;
-                })
-                .ease("linear")
-                .attrTween('d', d => this.getInterpolation(d))
-                .call(function(d) {
-                    //console.log(arguments);
-                    return d;
-                })
-                .each("end", () => {
-                    console.log('end transition');
-
-                });
-
-            /*
-            // var xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>this.data.xAxisProperties.scale;
-             //var yScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>this.data.yAxisProperties.scale;
-             var circle = this.chart.append('circle')
-                 .attr("r", 5)
-                 .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor);
-
-                 // console.log("t:", t, "index:", index, xScale(d.data[index].x + t));
-
-                  circle
-                      .transition()
-                .duration((d: PulseChartSeries): number => {
-                    var stop: number = this.findNextDataPoint(d.data, start);
-                    var speed: number = duration / d.data.length;
-                    if (speed < minSpeed) {
-                        speed = minSpeed;
-                    }
-
-                    duration = speed * (stop - start);
-                    console.log('duration:', duration, 'points:', stop - start);
-                    return duration;
-                })
-                .ease("linear")
-                .attrTween("transform", d => this.getInterpolation(d));
-            */
-        }
         /*
         private drawDotWithAnimation(data: PulseChartData, duration: number): void {
             var isScalar: boolean = data.isScalar,
@@ -1588,8 +1623,7 @@ module powerbi.visuals.samples {
         }*/
 
         private drawDots(data: PulseChartData): void {
-            var isScalar: boolean = data.isScalar,
-                xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
+            var xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
                 yScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.yAxisProperties.scale,
                 node: ClassAndSelector = PulseChart.Dot,
                 rootSelection: D3.UpdateSelection = this.rootSelection,
@@ -1606,9 +1640,7 @@ module powerbi.visuals.samples {
                 .classed(node.class, true);
 
             selection
-                .attr("cx", (d: PulseChartDataPoint) => {
-                    return xScale(isScalar ? d.categoryValue : d.categoryIndex);
-                })
+                .attr("cx", (d: PulseChartDataPoint) => xScale(d.x))
                 .attr("cy", (d: PulseChartDataPoint) => yScale(d.y))
                 .attr("r", 5)
                 .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
@@ -2117,6 +2149,7 @@ module powerbi.visuals.samples {
         }
 
         public clearChart(): void {
+           this.hideDot();
            this.chart.selectAll(PulseChart.LineNode.selector).remove();
            this.chart.selectAll(PulseChart.Dot.selector).remove();
            this.chart.selectAll(PulseChart.Tooltip.selector).remove();
@@ -2243,7 +2276,6 @@ module powerbi.visuals.samples {
         private static AnimationPlay: ClassAndSelector = createClassAndSelector('animationPlay');
         private static AnimationPause: ClassAndSelector = createClassAndSelector('animationPause');
         private static AnimationStop: ClassAndSelector = createClassAndSelector('animationStop');
-
         private animatorState: PulseChartAnimatorStates;
 
         constructor(chart: PulseChart, svg: D3.Selection) {
@@ -2254,7 +2286,7 @@ module powerbi.visuals.samples {
 
             this.animationPlay  = this.svg.append('g').classed(PulseChartAnimator.AnimationPlay.class, true).append("path");
             this.animationPause = this.svg.append('g').classed(PulseChartAnimator.AnimationPause.class, true).append("path");
-            this.animationStop  = this.svg.append('g').classed(PulseChartAnimator.AnimationStop.class, true).append("path");
+            this.animationStop = this.svg.append('g').classed(PulseChartAnimator.AnimationStop.class, true).append("path");
         }
 
         public render(): void {
@@ -2322,8 +2354,7 @@ module powerbi.visuals.samples {
         private stop(): void {
             console.log('stop animation');
             this.animatorState = PulseChartAnimatorStates.Ready;
-            this.chart.pauseAnimation();
-            this.chart.clearChart();
+            this.chart.stopAnimation();
         }
     }
 
@@ -2351,4 +2382,50 @@ module powerbi.visuals.samples {
             }
         }
     }
+
+    export class PulseDataWrapper {
+        private data: CartesianData;
+        private isScalar: boolean;
+
+        public constructor(columnChartData: CartesianData, isScalar: boolean) {
+            this.data = columnChartData;
+            this.isScalar = isScalar;
+        }
+
+        public lookupXValue(index: number, type: ValueType): any {
+            debug.assertValue(this.data, 'this.data');
+
+            var isDateTime: boolean = AxisHelper.isDateTime(type);
+            if (isDateTime && this.isScalar) {
+                return new Date(index);
+            }
+
+            var data = this.data;
+            if (type.text) {
+                debug.assert(index < data.categories.length, 'category index out of range');
+                return data.categories[index];
+            }
+            else {
+                var firstSeries = data.series[0];
+                if (firstSeries) {
+                    var seriesValues = firstSeries.data;
+                    if (seriesValues) {
+                        if (this.data.hasHighlights) {
+                            index = index * 2;
+                        }
+                        var dataPoint = seriesValues[index];
+                        if (dataPoint) {
+                            if (isDateTime) {
+                                return new Date(dataPoint.categoryValue);
+                            }
+                            return dataPoint.categoryValue;
+                        }
+                    }
+                }
+            }
+
+            return index;
+        }
+    }
+
 }
