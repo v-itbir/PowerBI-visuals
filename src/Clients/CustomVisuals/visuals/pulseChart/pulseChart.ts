@@ -1355,8 +1355,6 @@ module powerbi.visuals.samples {
 
                 var duration: number = 5000;
                 this.drawLines(data, duration, 0);
-                //this.drawDotWithAnimation(data, duration);
-
             } else {
                 this.hideDot();
                 this.drawLines(data);
@@ -1575,53 +1573,6 @@ module powerbi.visuals.samples {
                 }, 5000);
         }
 
-        /*
-        private drawDotWithAnimation(data: PulseChartData, duration: number): void {
-            var isScalar: boolean = data.isScalar,
-                xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
-                yScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.yAxisProperties.scale,
-                node: ClassAndSelector = PulseChart.Dot,
-                rootSelection: D3.UpdateSelection = this.rootSelection;
-
-            var selection: D3.UpdateSelection = rootSelection.selectAll(node.selector)
-                .data(d => {
-                    return _.filter(d.data, (value: PulseChartDataPoint) => value.popupInfo);
-                 });
-
-            selection
-                .enter()
-                .append("circle")
-                .classed(node.class, true);
-
-            selection
-                .attr("cx", (d: PulseChartDataPoint) => {
-                    return xScale(this.animationIndex);
-                })
-                .attr("cy", (d: PulseChartDataPoint) => yScale(d.y))
-                .attr("r", 5)
-                .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
-                .style("cursor", "pointer")
-                .on("mouseover", function(d) {
-                    d3.select(this)
-                        .style("fill", "#494949")
-                        .attr("r", 6);
-                })
-                .on("mouseout", function(d) {
-                    d3.select(this)
-                        .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
-                        .attr("r", 5);
-                })
-                .on("click", (d: PulseChartDataPoint) => {
-                    d3.event.stopPropagation();
-                    sm.select(d.identity, d3.event.ctrlKey)
-                        .then((selectionIds: SelectionId[]) => this.setSelection(selectionIds));
-                });
-
-            selection
-                .exit()
-                .remove();
-        }*/
-
         private drawDots(data: PulseChartData): void {
             var xScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.xAxisProperties.scale,
                 yScale: D3.Scale.LinearScale = <D3.Scale.LinearScale>data.yAxisProperties.scale,
@@ -1643,16 +1594,14 @@ module powerbi.visuals.samples {
                 .attr("cx", (d: PulseChartDataPoint) => xScale(d.x))
                 .attr("cy", (d: PulseChartDataPoint) => yScale(d.y))
                 .attr("r", 5)
-                .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
+                .style("fill", this.data.settings.popup.color)
                 .style("cursor", "pointer")
                 .on("mouseover", function(d) {
                     d3.select(this)
-                        .style("fill", "#494949")
                         .attr("r", 6);
                 })
                 .on("mouseout", function(d) {
                     d3.select(this)
-                        .style("fill", PulseChart.DefaultTooltipSettings.dataPointColor)
                         .attr("r", 5);
                 })
                 .on("click", (d: PulseChartDataPoint) => {
@@ -1729,7 +1678,7 @@ module powerbi.visuals.samples {
         }
 
         private setSelection(selectionIds?: SelectionId[]): void {
-            console.log('selectionIds', selectionIds, 'this.data', this.data);
+            //console.log('selectionIds', selectionIds, 'this.data', this.data);
             this.drawTooltips(this.data, selectionIds);
         }
 
@@ -1826,9 +1775,6 @@ module powerbi.visuals.samples {
                     ];
                     return line(path);
                 });
-                /*
-            .style('stroke', "white")
-            .style('stroke-width', "1px");*/
 
             var tooltipTriangle = tooltipRoot.selectAll(PulseChart.TooltipTriangle.selector).data(d => [d]);
             tooltipTriangle.enter().append("path").classed(PulseChart.TooltipTriangle.class, true);
@@ -2271,11 +2217,13 @@ module powerbi.visuals.samples {
         private svg: D3.Selection;
         private animationPlay: D3.Selection;
         private animationPause: D3.Selection;
-        private animationStop: D3.Selection;
+        private animationToStart: D3.Selection;
+        private animationToEnd: D3.Selection;
 
         private static AnimationPlay: ClassAndSelector = createClassAndSelector('animationPlay');
         private static AnimationPause: ClassAndSelector = createClassAndSelector('animationPause');
-        private static AnimationStop: ClassAndSelector = createClassAndSelector('animationStop');
+        private static AnimationToStart: ClassAndSelector = createClassAndSelector('animationToStart');
+        private static AnimationToEnd: ClassAndSelector = createClassAndSelector('animationToEnd');
         private animatorState: PulseChartAnimatorStates;
 
         constructor(chart: PulseChart, svg: D3.Selection) {
@@ -2284,9 +2232,59 @@ module powerbi.visuals.samples {
 
             this.animatorState = PulseChartAnimatorStates.Ready;
 
-            this.animationPlay  = this.svg.append('g').classed(PulseChartAnimator.AnimationPlay.class, true).append("path");
-            this.animationPause = this.svg.append('g').classed(PulseChartAnimator.AnimationPause.class, true).append("path");
-            this.animationStop = this.svg.append('g').classed(PulseChartAnimator.AnimationStop.class, true).append("path");
+            this.animationPlay  = this.svg.append('g').classed(PulseChartAnimator.AnimationPlay.class, true);
+			this.animationPlay
+				.append("circle")
+				.attr("cx", 12)
+				.attr("cy", 12)
+				.attr("r", 10)
+				.attr("fill", "transparent");
+
+            this.animationPlay
+				.append("path")
+                .attr("d", "M12 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10zm0-2c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-3 17v-10l9 5.146-9 4.854z")
+                .style("fill", "#777");
+
+            this.animationPause = this.svg.append('g').classed(PulseChartAnimator.AnimationPause.class, true);
+			this.animationPause
+				.append("circle")
+				.attr("cx", 12)
+				.attr("cy", 12)
+				.attr("r", 10)
+				.attr("fill", "transparent");
+
+            this.animationPause
+				.append("path")
+                .attr("d", "M12 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10zm0-2c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-1 17h-3v-10h3v10zm5-10h-3v10h3v-10z")
+                .style("fill", "#777");
+
+			/* ToStart */
+            this.animationToStart = this.svg.append('g').classed(PulseChartAnimator.AnimationToStart.class, true);
+			this.animationToStart
+				.append("circle")
+				.attr("cx", 12)
+				.attr("cy", 12)
+				.attr("r", 10)
+				.attr("fill", "transparent");
+
+            this.animationToStart
+				.append("path")
+                .attr("d", "M16.434 20.467c.552-.204 1.077-.462 1.569-.771l1.189 1.618c-.706.457-1.47.829-2.278 1.107l-.48-1.954zm-10.105-3.424l-1.2 1.775c.421.557.904 1.062 1.426 1.526l1.082-1.709c-.497-.475-.938-1.009-1.308-1.592zm-1.176-6.043c.711-3.972 4.174-7 8.347-7 4.687 0 8.5 3.813 8.5 8.5 0 2.313-.932 4.411-2.436 5.945l1.197 1.627c1.993-1.911 3.239-4.594 3.239-7.572 0-5.798-4.703-10.5-10.5-10.5-5.288 0-9.649 3.914-10.377 9h-3.123l4 5.917 4-5.917h-2.847zm5.745 9.574c-.582-.189-1.139-.429-1.658-.733l-1.065 1.683c.688.409 1.424.739 2.201.983l.522-1.933zm3.592.364c-.839.097-1.035.066-1.623.021l-.533 1.972c.946.105 1.661.092 2.636-.045l-.48-1.948z")
+                .style("fill", "#777");
+
+			/* ToEnd */
+            this.animationToEnd = this.svg.append('g').classed(PulseChartAnimator.AnimationToEnd.class, true);
+			this.animationToEnd
+				.append("circle")
+				.attr("cx", 12)
+				.attr("cy", 12)
+				.attr("r", 10)
+				.attr("fill", "transparent");
+
+            this.animationToEnd
+				.append("path")
+                .attr("d", "M12 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10zm0-2c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-6 16v-8l5 4-5 4zm5 0v-8l5 4-5 4zm7-8h-2v8h2v-8z")
+                .style("fill", "#777");
         }
 
         public render(): void {
@@ -2298,47 +2296,38 @@ module powerbi.visuals.samples {
                 .x(d => d.x)
                 .y(d => d.y);
 
-            this.animationPlay
-                .attr("d", line([
-                    { x: 0, y: 0 },
-                    { x: 20, y: 10 },
-                    { x: 0, y: 20 }
-                ]))
-                .style("fill", "green")
-                .attr('transform', SVGUtil.translate(0, 0))
+			this.animationPlay
+				.attr('transform', SVGUtil.translate(0, 0))
                 .on("click", () => {
                     this.play();
                 });
 
             this.animationPause
-                .attr("d", "M0,0 L0,20 L5,20 L5,0 L0,0 M10,0 L10,20 L15,20 L15,0, L10,0")
                 .attr('transform', SVGUtil.translate(30, 0))
-                .style("fill", "#AFAF00")
                 .on("click", () => {
                     this.pause();
                 });
 
-            this.animationStop
-                .attr("d", line([
-                    { x: 0, y: 0 },
-                    { x: 20, y: 0 },
-                    { x: 20, y: 20 },
-                    { x: 0, y: 20 }
-                ]))
+            this.animationToStart
                 .attr('transform', SVGUtil.translate(60, 0))
-                .style("fill", "red")
+                .style("fill", "#777")
                 .on("click", () => {
-                    this.stop();
+                    this.toStart();
+                });
+
+            this.animationToEnd
+                .attr('transform', SVGUtil.translate(90, 0))
+                .style("fill", "#777")
+                .on("click", () => {
+                    this.toEnd();
                 });
         }
 
         private play(): void {
             if (this.animatorState === PulseChartAnimatorStates.Paused) {
-                console.log('resume animation');
                 this.animatorState = PulseChartAnimatorStates.Play;
                 this.chart.resumeAnimation();
             } else if (this.animatorState === PulseChartAnimatorStates.Ready) {
-                console.log('play animation');
                 this.animatorState = PulseChartAnimatorStates.Play;
                 this.chart.clearChart();
                 this.chart.renderChart(true);
@@ -2346,13 +2335,23 @@ module powerbi.visuals.samples {
         }
 
         private pause(): void {
-            console.log('pause animation');
-            this.animatorState = PulseChartAnimatorStates.Paused;
-            this.chart.pauseAnimation();
+			if (this.animatorState === PulseChartAnimatorStates.Play) {
+	            this.animatorState = PulseChartAnimatorStates.Paused;
+	            this.chart.pauseAnimation();
+			}
+        }
+
+        private toStart(): void {
+            this.stop();
+			this.play();
+        }
+
+        private toEnd(): void {
+            this.stop();
+			this.chart.renderChart(false);
         }
 
         private stop(): void {
-            console.log('stop animation');
             this.animatorState = PulseChartAnimatorStates.Ready;
             this.chart.stopAnimation();
         }
