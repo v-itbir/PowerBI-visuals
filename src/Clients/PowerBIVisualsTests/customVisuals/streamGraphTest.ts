@@ -50,9 +50,9 @@ module powerbitests.customVisuals {
                 setTimeout(() => {
                     expect(visualBuilder.mainElement.children("path.layer").length)
                         .toBe(dataViews[0].categorical.values.length);
-                    expect(visualBuilder.mainElement.children("g.x.axis").children("g.tick"))
+                    expect(visualBuilder.mainElement.children("g").children("g.x.axis").children("g.tick"))
                         .toBeInDOM();
-                    expect(visualBuilder.mainElement.children("g.y.axis").children("g.tick"))
+                    expect(visualBuilder.mainElement.children("g").children("g.y.axis").children("g.tick"))
                         .toBeInDOM();
                     done();
                 }, powerbitests.DefaultWaitForRender);
