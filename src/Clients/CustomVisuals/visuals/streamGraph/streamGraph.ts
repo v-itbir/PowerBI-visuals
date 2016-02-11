@@ -25,6 +25,7 @@
  */
 
 module powerbi.visuals.samples {
+
     import ValueFormatter = powerbi.visuals.valueFormatter;
     import SelectionManager = utility.SelectionManager;
     import ClassAndSelector = jsCommon.CssConstants.ClassAndSelector;
@@ -45,9 +46,17 @@ module powerbi.visuals.samples {
     }
 
     export interface StreamGraphSettings {
-        showLegend: boolean;
+        legendSettings: StreamGraphLegendSettings;
         categoryAxisSettings: StreamGraphAxisSettings;
         valueAxisSettings: StreamGraphAxisSettings;
+    }
+
+    export interface StreamGraphLegendSettings {
+        show: boolean;
+        showTitle: boolean;
+        titleText: string;
+        labelColor: string;
+        fontSize: number;
     }
 
     export interface StreamGraphAxisSettings {
@@ -65,8 +74,29 @@ module powerbi.visuals.samples {
     const StreamGraphYAxisClassName = 'y axis';
     const StreamGraphDefaultAxisColor = "#777";
     const StreamGraphDefaultFontSizeInPoints: number = 8;
+    const DefaultLegendFontSizeInPt = 8;
+    const DefaultLegendLabelFillColor: string = '#666666';
     const StreamGraphDefaultFontFamily: string = 'wf_segoe-ui_normal';
     const StreamGraphDefaultFontWeight: string = 'normal';
+    const StreamGraphDefaultSettings: StreamGraphSettings = {
+        legendSettings: {
+            show: true,
+            showTitle: true,
+            labelColor: DefaultLegendLabelFillColor,
+            titleText: "",
+            fontSize: DefaultLegendFontSizeInPt
+        },
+        categoryAxisSettings: {
+            show: true,
+            axisColor: StreamGraphDefaultAxisColor,
+            showAxisTitle: false,
+        },
+        valueAxisSettings: {
+            show: true,
+            axisColor: StreamGraphDefaultAxisColor,
+            showAxisTitle: false,
+        },
+    };
 
     export class StreamGraph implements IVisual {
         private static VisualClassName = 'streamGraph';
@@ -331,27 +361,11 @@ module powerbi.visuals.samples {
         }
 
         private parseSettings(dataView: DataView): StreamGraphSettings {
-            let objects: DataViewObjects = null;
-            let streamGraphSettings: StreamGraphSettings = {
-                showLegend: true,
-                categoryAxisSettings: {
-                    show: true,
-                    axisColor: StreamGraphDefaultAxisColor,
-                    showAxisTitle: false,
-                },
-                valueAxisSettings: {
-                    show: true,
-                    axisColor: StreamGraphDefaultAxisColor,
-                    showAxisTitle: false,
-                },
-            };
+            if (!dataView || !dataView.metadata)
+                return StreamGraphDefaultSettings;
 
-            if (dataView && dataView.metadata)
-                objects = dataView.metadata.objects;
-            else
-                return streamGraphSettings;
-
-            streamGraphSettings.showLegend = DataViewObjects.getValue(objects, StreamGraph.Properties.legend.show, streamGraphSettings.showLegend);
+            let objects: DataViewObjects = dataView.metadata.objects;
+            let streamGraphSettings = _.clone(StreamGraphDefaultSettings);
 
             let categoryAxisSettings = streamGraphSettings.categoryAxisSettings;
             categoryAxisSettings.show = DataViewObjects.getValue<boolean>(objects, StreamGraph.Properties.categoryAxis.show, categoryAxisSettings.show);
@@ -608,7 +622,7 @@ module powerbi.visuals.samples {
 
         private renderLegend(streamGraphData: StreamData): void {
             let legendData: LegendData = streamGraphData.legendData;
-            if (!legendData)
+            if (!legendData || !this.dataView || !this.dataView.metadata)
                 return;
 
             this.legendObjectProperties = DataViewObjects.getObject(this.dataView.metadata.objects, "legend", {});
@@ -626,10 +640,8 @@ module powerbi.visuals.samples {
         }
 
         private updateViewPort(): void {
-            let legendMargins: IViewport = this.legend.getMargins(),
-                legendPosition: LegendPosition;
-
-            legendPosition = LegendPosition[<string>this.legendObjectProperties[legendProps.position]];
+            let legendMargins: IViewport = this.legend.getMargins();
+            let legendPosition = LegendPosition[<string>this.legendObjectProperties[legendProps.position]];
 
             switch (legendPosition) {
                 case LegendPosition.Top:
@@ -765,7 +777,8 @@ module powerbi.visuals.samples {
         }
 
         private enumerateValueAxisValues(enumeration: ObjectEnumerationBuilder): void {
-            let valueAxisSettings: StreamGraphAxisSettings = this.data.streamGraphSettings.valueAxisSettings;
+
+            let valueAxisSettings: StreamGraphAxisSettings = this.data && this.data.streamGraphSettings ? this.data.streamGraphSettings.valueAxisSettings : StreamGraphDefaultSettings.valueAxisSettings;
 
             enumeration.pushInstance({
                 selector: null,
@@ -780,7 +793,7 @@ module powerbi.visuals.samples {
         }
 
         private enumerateCategoryAxisValues(enumeration: ObjectEnumerationBuilder): void {
-            let categoryAxisSettings: StreamGraphAxisSettings = this.data.streamGraphSettings.categoryAxisSettings;
+            let categoryAxisSettings: StreamGraphAxisSettings = this.data && this.data.streamGraphSettings ? this.data.streamGraphSettings.categoryAxisSettings : StreamGraphDefaultSettings.categoryAxisSettings;
 
             enumeration.pushInstance({
                 selector: null,
@@ -795,22 +808,19 @@ module powerbi.visuals.samples {
         }
 
         private enumerateLegend(enumeration: ObjectEnumerationBuilder): void {
-            let showTitle: boolean = true,
-                titleText: string,
-                labelColor: DataColorPalette,
-                fontSize: number = 8;
+            let legendSettings: DataViewObject = this.legendObjectProperties ? this.legendObjectProperties : {};
 
             enumeration.pushInstance({
                 selector: null,
                 objectName: 'legend',
                 displayName: "Legend",
                 properties: {
-                    show: this.data.streamGraphSettings.showLegend,
+                    show: this.data && this.data.streamGraphSettings ? this.data.streamGraphSettings.legendSettings.show : true,
                     position: LegendPosition[this.legend.getOrientation()],
-                    showTitle: DataViewObject.getValue<boolean>(this.legendObjectProperties, legendProps.showTitle, showTitle),
-                    titleText: DataViewObject.getValue<string>(this.legendObjectProperties, legendProps.titleText, titleText),
-                    labelColor: DataViewObject.getValue<DataColorPalette>(this.legendObjectProperties, legendProps.labelColor, labelColor),
-                    fontSize: DataViewObject.getValue(this.legendObjectProperties, legendProps.fontSize, fontSize)
+                    showTitle: DataViewObject.getValue<boolean>(legendSettings, legendProps.showTitle, true),
+                    titleText: DataViewObject.getValue<string>(legendSettings, legendProps.titleText, ""),
+                    labelColor: DataViewObject.getValue<string>(legendSettings, legendProps.labelColor, DefaultLegendLabelFillColor),
+                    fontSize: DataViewObject.getValue<number>(legendSettings, legendProps.fontSize, DefaultLegendFontSizeInPt)
                 }
             });
         }
@@ -828,9 +838,11 @@ module powerbi.visuals.samples {
 
             switch (options.objectName) {
                 case 'legend':
-                    if (dataView.categorical.values)
-                        if (dataView.categorical.values[0].source) // series
-                            this.enumerateLegend(enumeration);
+                    if (dataView
+                        && dataView.categorical
+                        && dataView.categorical.values
+                        && dataView.categorical.values.source)
+                        this.enumerateLegend(enumeration);
                     break;
                 case 'categoryAxis':
                     this.enumerateCategoryAxisValues(enumeration);
